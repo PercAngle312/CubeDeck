@@ -103,9 +103,38 @@ static int run(void)
     return 0;
 }
 
+static int test_retry_exhaustion(void)
+{
+    mock m;
+    cdtx_sender sender;
+    cdwx_link link;
+    uint32_t word;
+    unsigned int attempts;
+    memset(&m, 0, sizeof(m));
+    CHECK(cdbs_init_sender(&sender, read_source, &m, 0u, 0u) == 0);
+    CHECK(cdwx_init(&link, &sender, 0x1234ABCDu) == 0);
+    for (attempts = 0u; attempts < CDRL_MAX_RETRIES + 1u; ++attempts) {
+        size_t emitted = 0u;
+        while (cdwx_next_word(&link, &word) == 1)
+            ++emitted;
+        CHECK(emitted == CDTP_HEADER_WORDS + 2u + 1u);
+        CHECK(link.phase == CDWX_WAIT_REPLY);
+        if (attempts != CDRL_MAX_RETRIES) {
+            CHECK(cdwx_timeout(&link) == 0);
+            CHECK(link.phase == CDWX_SENDING);
+        } else {
+            CHECK(cdwx_timeout(&link) == -1);
+            CHECK(link.phase == CDWX_FAILED);
+            CHECK(sender.phase == CDTX_FAILED);
+            CHECK(cdwx_next_word(&link, &word) == -1);
+        }
+    }
+    return 0;
+}
+
 int main(void)
 {
-    if (run())
+    if (run() || test_retry_exhaustion())
         return 1;
     puts("Nonblocking session-bound Joybus word scheduler simulation passed.");
     return 0;
