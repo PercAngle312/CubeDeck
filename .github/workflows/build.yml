@@ -517,3 +517,17 @@ jobs:
         with:
           name: cubedeck-v2-probe-gba
           path: experiments/v2-probe/out/cubedeck-v2-probe.gba
+
+  test-v2-probe-contract:
+    name: Test exact seven-word console probe contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Verify probe length, opcode, transfer ID, and CRC
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/session_guard.c \
+            tests/test_v2_probe_contract.c -o /tmp/test-v2-probe-contract
+          /tmp/test-v2-probe-contract
