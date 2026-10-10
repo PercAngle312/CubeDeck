@@ -26,6 +26,12 @@ The GBA diagnostic is intended to run from your SuperCard/flashcart. CubeDeck do
 
 The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It switches the GBA link port into Joybus mode, prepares a deterministic XOR reply, and changes its screen color when it receives data. The latest diagnostic also captures, decodes and CRC-verifies a framed sample packet, using cyan to indicate the complete sample matched. It does not read or write cartridge ROM or save memory.
 
+## Current host-side transfer development
+
+The shared C protocol modules now support packet CRC32, sequence checking, idempotent retries, manifest-first sessions, and complete-image checksums. A newer **RAM-light callback-based sender and receiver** are tested in CI with a **131,077-byte** simulated transfer, including corrupted frames, dropped ACKs, read failures, sink failures, and stale acknowledgments. Streaming ACKs identify both packet opcode and sequence to distinguish MANIFEST from DATA(0).
+
+**These large-transfer capabilities are software simulations only.** They are **not wired into the GameCube or GBA runtime**, and no ROM playback or cartridge dumping is implemented. A source-code guard rejects selected direct storage-write APIs; this cannot guarantee Swiss or firmware never writes storage.
+
 ## Hardware validation
 
 1. Confirm the Actions workflow succeeds and both artifacts are present.
@@ -37,7 +43,7 @@ The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It s
 ## Roadmap
 
 1. Portable packet framing v1 is host-tested and now used by the GameCube A-button smoke test. The GBA diagnostic now both acknowledges each word with XOR and passively parses the complete sample packet; this path passed the physical-hardware cyan-screen check.
-2. Add GBA-side packet parsing and verify a payload byte-for-byte on real hardware.
+2. The GBA-side seven-byte packet parser is hardware-verified. Next integrate bounded chunk framing, timeouts, and opcode-bound ACK handling into the Joybus runtimes before requesting another hardware test.
 3. Evaluate established GBA Link Cable Dumper code/workflow for reading retail cartridges; keep SuperCard SD-file access as a separate question.
 4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
 5. Investigate save access separately, starting read-only and protecting existing saves.
