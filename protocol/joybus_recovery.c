@@ -17,15 +17,13 @@ int cdjr_begin(cdjr_link *link, uint32_t now)
         (link->phase != CDJR_IDLE && link->phase != CDJR_READY &&
          link->phase != CDJR_FAILED))
         return -1;
-    /* A callback from a previous session may still target reused SI RAM.
-     * The caller must separately ensure old SI transfers are quiesced before
-     * begin(), especially after a watchdog timeout. */
+    /* Tokens stay monotonic across application sessions. Callers must
+     * still ensure no physical SI transfer is in flight before begin(). */
     if (link->error == CDJR_ERR_TIMEOUT)
         return -1;
     ++link->generation;
     if (!link->generation)
         ++link->generation;
-    link->active_token = 0u;
     link->next_action = CDJR_SEND_RESET;
     link->phase = CDJR_RESET;
     link->error = CDJR_ERR_NONE;
@@ -73,8 +71,8 @@ int cdjr_callback(cdjr_link *link, uint32_t token, uint32_t result)
 {
     if (!link || !token)
         return -1;
-    /* Both token and session generation are caller-owned. A new session
-     * cannot be initiated until the previous hardware call is quiesced. */
+    /* Tokens are monotonic across sessions. A new session cannot be
+     * initiated until the previous hardware call is quiesced. */
     if (!link->inflight || token != link->active_token ||
         link->phase == CDJR_FAILED)
         return 0;
