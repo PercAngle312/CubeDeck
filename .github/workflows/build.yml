@@ -328,3 +328,19 @@ jobs:
             protocol/transfer_segments.c tests/test_transfer_segments.c \
             -o /tmp/test-transfer-segments
           /tmp/test-transfer-segments
+
+  test-max-stream-window:
+    name: Test maximum 65535-packet stream window
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Run 16 MiB bounded zero-allocation transfer
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Iinclude \
+            protocol/stream_hash.c protocol/stream_sender.c \
+            protocol/stream_receiver.c protocol/stream_wire.c \
+            protocol/reliable_link.c protocol/chunk_session.c \
+            protocol/transport_protocol.c \
+            tests/test_stream_max_window.c -o /tmp/test-max-window
+          /tmp/test-max-window
