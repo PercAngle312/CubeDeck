@@ -53,3 +53,20 @@ operation or save write.
 
 The code must be independently validated on physical hardware before
 any claims of multi-frame Joybus success.
+
+## Physical hardware result — 2026-10-10
+
+**User-reported PASS:** On the real GameCube + GBA link cable, the user
+observed **3/3** on the GameCube and **cyan** on the GBA using the isolated
+three-frame experimental binaries. This is evidence that all three sequential
+seven-byte v2 test frames reached the GBA, passed per-frame CRC, matched the
+fixed test transfer ID, were accepted in sequence (1, 2, 3), and had the
+expected distinct synthetic sample payloads. The GameCube's 3/3 indicator
+itself only means per-word XOR echoes were received; the GBA cyan color
+provides the additional frame-acceptance result.
+
+This is a user-observed smoke test rather than independent bus capture. It does
+**not** establish reliable retransmission on real hardware, high-volume ROM
+streaming, dynamic session negotiation, ROM reading, save writes, or emulator
+execution. The original diagnostics and cyan-verified single-frame probe
+remain unchanged and should be retained as fallback artifacts.
