@@ -9,9 +9,7 @@
  * exactly one 32-bit word at a time. Faults are deterministic.
  * Neither hardware implementation nor storage is involved.
  */
-#define CHECK(x) do { if (!(x)) { \
-    fprintf(stderr, "FAIL %d: %s\n", __LINE__, #x); return 1; \
-} while (0)
+#define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL %d: %s\\n", __LINE__, #x); return 1; } } while (0)
 
 /* Encode, optionally damage/drop a word, and feed an entire packet.
  * Return 1 if a validated packet appeared, 0 if dropped, -1 if discarded.
