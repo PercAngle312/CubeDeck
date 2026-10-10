@@ -32,11 +32,13 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Install libgba
+      - name: Build and install libgba from source
         run: |
-          dkp-pacman -Syu --noconfirm
-          dkp-pacman -S --noconfirm libgba
+          git clone --depth 1 https://github.com/devkitPro/libgba.git /tmp/libgba
+          make -C /tmp/libgba
+          make -C /tmp/libgba install
           test -f "$DEVKITPRO/libgba/include/gba.h"
+          test -f "$DEVKITPRO/libgba/lib/libgba.a"
       - name: Build GBA diagnostic ROM
         run: make -C gba-diagnostic clean all
       - name: Upload GBA diagnostic artifact
