@@ -17,14 +17,16 @@ The GBA diagnostic is intended to run from your SuperCard/flashcart. CubeDeck do
 - System information and About pages
 - Four-port GameCube controller monitor
 - GBA link cable detection on GameCube Port 2 using asynchronous SI device-type polling
+- Callback-driven Joybus RESET/STATUS and two-way diagnostic word exchange
+- One-round verification (X) and a 16-round sequential-word stress test (Y)
 
-The link page currently detects the device only. It does not yet send Joybus requests or transfer a program.
+The diagnostic exchange is verified on physical hardware. This sends only test words and XOR replies; ROM streaming and save access are not implemented.
 
 ## GBA diagnostic payload
 
 The separate `gba-diagnostic/` target is an experimental first GBA-side client. It switches the GBA link port into Joybus mode, enables serial interrupts, prepares a fixed signature response, and changes its screen color when it receives data. It does not read or write cartridge ROM/save memory.
 
-The source and cloud build target are committed, but compilation and real-cable behavior are not yet verified. The GameCube app currently sends no Joybus requests, so the GBA screen-color response is not expected to change until a matching sender is implemented.
+The source and cloud build target are committed and compile in CI. The maintainer has confirmed the real-cable test on hardware: the GBA screen changes color and the GameCube receives the expected XOR reply. The GBA diagnostic does not read cartridge ROM or save memory.
 
 ## Hardware validation
 
