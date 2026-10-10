@@ -147,3 +147,16 @@ jobs:
             protocol/transport_protocol.c tests/test_protocol_matrix.c \
             -o /tmp/test-protocol-matrix
           /tmp/test-protocol-matrix
+
+  test-packet-stream:
+    name: Test incremental word stream parsing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and run stream tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/packet_stream.c \
+            tests/test_packet_stream.c -o /tmp/test-packet-stream
+          /tmp/test-packet-stream
