@@ -9,7 +9,9 @@ from pathlib import Path
 import re
 import sys
 
-paths = sorted(Path("src").glob("*.c")) + sorted(Path("gba-diagnostic").glob("*.c"))
+paths = (sorted(Path("src").glob("*.c")) +
+         sorted(Path("gba-diagnostic").glob("*.c")) +
+         sorted(Path("protocol").glob("*.c")))
 patterns = {
     "GameCube memory card API": r"\bCARD_(?:Init|Mount|Create|Write|Format|Delete|Open|Read|Close)\s*\(",
     "filesystem write API": r"\b(?:fwrite|fprintf|fputs|fputc|remove|rename|mkdir|unlink)\s*\(",
