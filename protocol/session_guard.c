@@ -20,10 +20,12 @@ int cdgu_encode(const cdgu_message *message, uint32_t *words,
 {
     cdtp_packet packet;
     if (!message || !words || !out_count || !message->session_id ||
-        message->payload_length > CDGU_MAX_PAYLOAD)
+        message->payload_length > CDGU_MAX_PAYLOAD ||
+        (message->opcode & 0x80u) != 0u)
         return -1;
     memset(&packet, 0, sizeof(packet));
-    packet.opcode = message->opcode;
+    /* Reserve the high opcode bit for experimental v2 frames. */
+    packet.opcode = (uint8_t)(message->opcode | 0x80u);
     packet.sequence = message->sequence;
     packet.payload_length = message->payload_length + CDGU_SESSION_BYTES;
     write_id(packet.payload, message->session_id);
@@ -41,14 +43,15 @@ int cdgu_decode(const uint32_t *words, size_t count,
     if (!words || !message || !expected_session)
         return -1;
     if (cdtp_decode(words, count, &packet) != CDTP_OK ||
-        packet.payload_length < CDGU_SESSION_BYTES)
+        packet.payload_length < CDGU_SESSION_BYTES ||
+        (packet.opcode & 0x80u) == 0u)
         return -2;
     id = read_id(packet.payload);
     if (!id || id != expected_session)
         return -2;
     memset(message, 0, sizeof(*message));
     message->session_id = id;
-    message->opcode = packet.opcode;
+    message->opcode = (uint8_t)(packet.opcode & 0x7Fu);
     message->sequence = packet.sequence;
     message->payload_length = packet.payload_length - CDGU_SESSION_BYTES;
     memcpy(message->payload, packet.payload + CDGU_SESSION_BYTES,
