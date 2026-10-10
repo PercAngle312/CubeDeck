@@ -233,7 +233,7 @@ static void draw_link(void)
         case 6:
             printf("\x1b[13;2HReply mismatch: %08lX (expected %08lX)\n",
                    (unsigned long)joybus_reply, (unsigned long)JOYBUS_EXPECTED_REPLY);
-            printf("\x1b[14;2HRe-enter page to retry.\n");
+            printf("\x1b[15;2HRe-enter page to retry.\n");
             break;
         case 7:
             printf("\x1b[13;2HJoybus transfer failed or timed out.\n");
@@ -252,8 +252,8 @@ static void draw_about(void)
     printf("\x1b[7;2HCubeDeck is an open homebrew utility shell.\n");
     printf("\x1b[9;2HTechnology: C, devkitPPC, libogc\n");
     printf("\x1b[10;2HTarget: Nintendo GameCube (DOL executable)\n");
-    printf("\x1b[12;2HThe GBA link page currently checks device presence;\n");
-    printf("\x1b[13;2Hit does not yet transfer data or launch a GBA payload.\n");
+    printf("\x1b[12;2HIncludes a verified two-way Joybus diagnostic exchange.\n");
+    printf("\x1b[13;2HROM streaming and save access are future milestones.\n");
     printf("\x1b[21;2HB: Back to main menu\n");
 }
 
