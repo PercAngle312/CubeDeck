@@ -51,9 +51,6 @@ cdtp_status cdtp_encode(const cdtp_packet *packet, uint32_t *words,
     *out_word_count = 0;
     if (packet->payload_length > CDTP_MAX_PAYLOAD)
         return CDTP_ERR_TOO_LARGE;
-    if (packet->payload_length != 0u && packet->payload == NULL)
-        return CDTP_ERR_ARGUMENT;
-
     payload_words = payload_word_count(packet->payload_length);
     total_words = CDTP_HEADER_WORDS + payload_words + 1u;
     if (word_capacity < total_words)
