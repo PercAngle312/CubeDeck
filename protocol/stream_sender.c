@@ -82,8 +82,14 @@ int cdtx_reply(cdtx_sender *s, const cdtp_packet *reply)
     if (!s || !reply || !s->pending_valid ||
         s->phase == CDTX_COMPLETE || s->phase == CDTX_FAILED)
         return -1;
-    if (reply->payload_length != 0u ||
-        reply->sequence != s->pending.sequence)
+    if (reply->sequence != s->pending.sequence)
+        return 0;
+    /* A delayed MANIFEST ACK must never acknowledge DATA sequence 0. */
+    if (reply->opcode == CDRL_OP_ACK &&
+        (reply->payload_length != 1u ||
+         reply->payload[0] != s->pending.opcode))
+        return 0;
+    if (reply->opcode == CDRL_OP_NACK && reply->payload_length != 0u)
         return 0;
     if (reply->opcode == CDRL_OP_NACK)
         return cdtx_timeout(s) == 0 ? 0 : -1;
