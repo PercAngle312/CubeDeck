@@ -8,18 +8,28 @@ static void put32(uint8_t *dest, uint32_t value)
         dest[i] = (uint8_t)(value >> (8u * i));
 }
 
-int cdtx_init(cdtx_sender *s, cdtx_source reader, void *context,
-              uint32_t length, uint32_t crc32)
+int cdtx_init_chunked(cdtx_sender *s, cdtx_source reader, void *context,
+                      uint32_t length, uint32_t crc32, uint16_t chunk_capacity)
 {
-    if (!s || !reader || length > CDST_MAX_BYTES)
+    if (!s || !reader || chunk_capacity == 0u ||
+        chunk_capacity > CDTP_MAX_PAYLOAD ||
+        (uint64_t)length > (uint64_t)CDST_MAX_CHUNKS * chunk_capacity)
         return -1;
     memset(s, 0, sizeof(*s));
     s->read = reader;
     s->context = context;
     s->expected_length = length;
     s->expected_crc32 = crc32;
+    s->chunk_capacity = chunk_capacity;
     s->phase = CDTX_MANIFEST;
     return 0;
+}
+
+int cdtx_init(cdtx_sender *s, cdtx_source reader, void *context,
+              uint32_t length, uint32_t crc32)
+{
+    return cdtx_init_chunked(s, reader, context, length, crc32,
+                             CDTP_MAX_PAYLOAD);
 }
 
 int cdtx_next(cdtx_sender *s, cdtp_packet *frame)
@@ -49,8 +59,8 @@ int cdtx_next(cdtx_sender *s, cdtp_packet *frame)
         remaining = s->expected_length - s->offset;
         s->pending.opcode = CDCS_OP_DATA;
         s->pending.sequence = (uint16_t)s->next_sequence;
-        s->pending.payload_length = (uint16_t)(remaining < CDTP_MAX_PAYLOAD ?
-                                               remaining : CDTP_MAX_PAYLOAD);
+        s->pending.payload_length = (uint16_t)(remaining < s->chunk_capacity ?
+                                               remaining : s->chunk_capacity);
         if (s->read(s->context, s->offset, s->pending.payload,
                     s->pending.payload_length) != 0) {
             memset(&s->pending, 0, sizeof(s->pending));
