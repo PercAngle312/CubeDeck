@@ -38,7 +38,7 @@ The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, 
 ## Next milestones
 
 1. Keep the verified diagnostic and its current artifacts as the baseline.
-2. Design and host-test packet framing, word ordering, checksum, retry, and resume behavior before wiring bulk transfer into the UI.
+2. An experimental portable packet framing v1 now exists in `include/cubedeck/transport_protocol.h` and `protocol/transport_protocol.c`. Host CI covers empty, partial-word, maximum-size, CRC-vector, corruption, malformed-shape, unsupported-version, and capacity cases. It is **not yet wired into either runtime**.
 3. Prototype a small bounded payload transfer between CubeDeck and a dedicated GBA test ROM; verify byte-for-byte integrity on hardware before increasing payload size.
 4. For cartridge ROM acquisition, evaluate the established [GBA Link Cable Dumper](https://github.com/FIX94/gba-link-cable-dumper) workflow before reimplementing cartridge access. Confirm whether its boot/insert-cartridge flow works with the user's GBA and carts.
 5. Investigate SuperCard SD-file access separately; do not conflate it with reading a retail cartridge.
