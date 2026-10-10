@@ -57,3 +57,25 @@ $(OUT)/cubedeck-v2-multiframe-arm.elf: experiments/v2-probe/gba-multiframe.c $(P
 $(OUT)/cubedeck-v2-multiframe.gba: $(OUT)/cubedeck-v2-multiframe-arm.elf
 	$(ARMOBJ) -O binary $< $@
 	$(GBAFIX) $@ -tCDBK3FRAMES -cCDV3 -m01
+
+# Opt-in ACK/NACK experiment; isolated from the verified three-frame pair.
+.PHONY: ack-gamecube ack-gba
+ack-gamecube: $(OUT)/cubedeck-v2-ack.dol
+ack-gba: $(OUT)/cubedeck-v2-ack.gba
+
+$(OUT)/cubedeck-v2-ack.elf: experiments/v2-probe/gamecube-ack.c $(PROTO) experiments/v2-probe/ack_control.h | $(OUT)
+	$(PPC) -O2 -Wall -Wextra -Wno-unused-parameter -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  experiments/v2-probe/gamecube-ack.c $(PROTO) -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-ack.dol: $(OUT)/cubedeck-v2-ack.elf
+	$(ELF2DOL) $< $@
+
+$(OUT)/cubedeck-v2-ack-arm.elf: experiments/v2-probe/gba-ack.c $(PROTO) experiments/v2-probe/ack_control.h | $(OUT)
+	$(ARM) -O2 -Wall -Wextra -mthumb -mthumb-interwork \
+	  -I$(DEVKITPRO)/libgba/include -Iinclude -specs=gba.specs \
+	  experiments/v2-probe/gba-ack.c $(PROTO) -L$(DEVKITPRO)/libgba/lib -lgba -o $@
+
+$(OUT)/cubedeck-v2-ack.gba: $(OUT)/cubedeck-v2-ack-arm.elf
+	$(ARMOBJ) -O binary $< $@
+	$(GBAFIX) $@ -tCDBKACKTEST -cCDAK -m01
