@@ -1,6 +1,6 @@
 # CubeDeck GBA Link Transport — Implementation Notes
 
-Status: **GameCube Port 2 GBA detection is confirmed by the maintainer on physical hardware. A separate GBA-side diagnostic source and cloud build target have been added; compilation and Joybus exchange remain unverified.**
+Status: **GBA detection and a two-way Joybus word exchange are confirmed by the maintainer on physical hardware. The next hardware check is a 16-round sequential-word stress test.**
 
 ## Confirmed hardware path
 
@@ -12,9 +12,9 @@ Prior art:
 - [afska/gba-link-connection](https://github.com/afska/gba-link-connection) — GBA-side Joybus implementation in `lib/LinkCube.hpp`; it uses RCNT Joybus mode, JOYCNT flags, and high/low 16-bit transfer registers.
 - [joypad-ai/joypad-os GBA link notes](https://github.com/joypad-ai/joypad-os/blob/main/docs/output/gba-link-cable.md).
 
-## Confirmed milestone: detection
+## Confirmed milestones: detection and round-trip
 
-CubeDeck calls `SI_GetTypeAsync(1, callback)` for GameCube Port 2. The maintainer reports that the app still boots and the GBA is detected on their hardware. This confirms device detection on that setup, not Joybus payload transfer.
+CubeDeck calls `SI_GetTypeAsync(1, callback)` for GameCube Port 2. The maintainer confirmed that the GBA is detected and that the two-way diagnostic exchange works on physical hardware: the GBA screen visibly changes color after receiving a word, and the GameCube reads the expected reply `B76E6ABB`. This confirms one diagnostic word exchange, not sustained transfer or ROM access.
 
 ## Added: standalone GBA diagnostic source
 
@@ -25,7 +25,7 @@ CubeDeck calls `SI_GetTypeAsync(1, callback)` for GameCube Port 2. The maintaine
 - changes screen color when receive count advances;
 - never accesses cartridge ROM or save memory.
 
-`gba-diagnostic/Makefile` is a separate devkitARM/libgba target. GitHub Actions now has a separate GBA build job and artifact. This is **source-level progress only** until CI succeeds. The GameCube side still sends no Joybus requests, so no screen change is expected yet.
+`gba-diagnostic/Makefile` is a separate devkitARM/libgba target. GitHub Actions now has a separate GBA build job and artifact. CI builds both targets. The maintainer has also verified the matching sender/receiver on a real cable. The new stress-test path is not yet hardware verified.
 
 ## Protocol constraints
 
@@ -38,10 +38,10 @@ CubeDeck calls `SI_GetTypeAsync(1, callback)` for GameCube Port 2. The maintaine
 ## Next milestones
 
 1. Confirm both CI jobs compile and produce artifacts.
-2. Add a GameCube-side, callback-driven Joybus diagnostic sender for fixed test words, with bounded timeouts and visible sent/received/error counters.
-3. Run the GBA diagnostic from the flashcart and verify a known signature/XOR response over the real cable.
-4. Only after repeatable round-trips, develop chunked transport with sequence numbers, checksums, acknowledgements, retries, and cancellation.
-5. Research cartridge ROM reading and save identification separately; keep initial save access read-only.
+2. Run the new 16-round sequential-word stress test and confirm every reply on hardware.
+3. Develop chunked transport with sequence numbers, checksums, acknowledgements, retries, and cancellation.
+4. Investigate separate ROM acquisition paths for physical cartridges and SuperCard SD files; neither is currently exposed to the GameCube.
+5. Research save identification and read-only access separately; do not write saves during bring-up.
 6. Consider emulation only after ROM transfer and integrity checks are demonstrated.
 
 ## Validation policy
