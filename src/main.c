@@ -34,8 +34,12 @@ static int joybus_stage = 0; /* 0=idle, 1=RESET, 2=STATUS, 3=SEND, 4=READ, 5=pas
 static u32 joybus_stage_frame = 0;
 static u8 joybus_status[3] = {0, 0, 0};
 static u32 joybus_reply = 0;
-#define JOYBUS_TEST_WORD 0x12345678u
-#define JOYBUS_EXPECTED_REPLY (JOYBUS_TEST_WORD ^ 0xA55A3CC3u)
+static u32 joybus_test_word = 0x12345678u;
+static int joybus_round = 0;
+static int joybus_rounds_target = 1;
+#define JOYBUS_TEST_WORD_BASE 0x12345678u
+#define JOYBUS_REPLY_XOR 0xA55A3CC3u
+#define JOYBUS_STRESS_ROUNDS 16
 #define JOYBUS_TIMEOUT_FRAMES 120
 
 static const char *menu_items[MENU_COUNT] = {
@@ -137,10 +141,10 @@ static void start_joybus_word_send(void)
     memset(joybus_cmd, 0, sizeof(joybus_cmd));
     memset(joybus_res, 0, sizeof(joybus_res));
     joybus_cmd[0] = 0x15; /* Joybus receive/write command */
-    joybus_cmd[1] = (u8)(JOYBUS_TEST_WORD);
-    joybus_cmd[2] = (u8)(JOYBUS_TEST_WORD >> 8);
-    joybus_cmd[3] = (u8)(JOYBUS_TEST_WORD >> 16);
-    joybus_cmd[4] = (u8)(JOYBUS_TEST_WORD >> 24);
+    joybus_cmd[1] = (u8)(joybus_test_word);
+    joybus_cmd[2] = (u8)(joybus_test_word >> 8);
+    joybus_cmd[3] = (u8)(joybus_test_word >> 16);
+    joybus_cmd[4] = (u8)(joybus_test_word >> 24);
     joybus_callback_done = 0;
     joybus_callback_result = 0;
     joybus_pending = 1;
@@ -181,7 +185,18 @@ static void service_joybus_probe(void)
                        ((u32)joybus_res[1] << 8) |
                        ((u32)joybus_res[2] << 16) |
                        ((u32)joybus_res[3] << 24);
-        joybus_stage = (joybus_reply == JOYBUS_EXPECTED_REPLY) ? 5 : 6;
+        if (joybus_reply != (joybus_test_word ^ JOYBUS_REPLY_XOR)) {
+            joybus_stage = 6;
+        } else {
+            ++joybus_round;
+            if (joybus_round < joybus_rounds_target) {
+                joybus_test_word = JOYBUS_TEST_WORD_BASE + (u32)joybus_round;
+                joybus_stage = 3;
+                start_joybus_word_send();
+            } else {
+                joybus_stage = 5;
+            }
+        }
     }
 }
 
@@ -210,7 +225,7 @@ static void draw_link(void)
     switch (joybus_stage) {
         case 0:
             if (link_status == 2)
-                printf("\x1b[13;2HPress X to run the two-way Joybus test.\n");
+                printf("\x1b[13;2HX: one round  |  Y: 16-round link stress test\n");
             else
                 printf("\x1b[13;2HX test unlocks after GBA detection succeeds.\n");
             break;
@@ -221,18 +236,25 @@ static void draw_link(void)
             printf("\x1b[13;2HJoybus test: waiting for STATUS...\n");
             break;
         case 3:
-            printf("\x1b[13;2HSending test word 12345678 to GBA...\n");
+            printf("\x1b[13;2HSending word %08lX (%d/%d)...\n",
+                   (unsigned long)joybus_test_word, joybus_round + 1,
+                   joybus_rounds_target);
             break;
         case 4:
             printf("\x1b[13;2HReading GBA diagnostic reply...\n");
             break;
         case 5:
-            printf("\x1b[13;2HTWO-WAY TEST PASSED! Reply: %08lX\n", (unsigned long)joybus_reply);
-            printf("\x1b[14;2HSTATUS: %02X %02X %02X\n", joybus_status[0], joybus_status[1], joybus_status[2]);
+            printf("\x1b[13;2HJOYBUS TEST PASSED: %d/%d replies valid\n",
+                   joybus_round, joybus_rounds_target);
+            printf("\x1b[14;2HLast reply: %08lX  STATUS: %02X %02X %02X\n",
+                   (unsigned long)joybus_reply, joybus_status[0],
+                   joybus_status[1], joybus_status[2]);
             break;
         case 6:
-            printf("\x1b[13;2HReply mismatch: %08lX (expected %08lX)\n",
-                   (unsigned long)joybus_reply, (unsigned long)JOYBUS_EXPECTED_REPLY);
+            printf("\x1b[13;2HReply mismatch on round %d\n", joybus_round + 1);
+            printf("\x1b[14;2HGBA: %08lX  Expected: %08lX\n",
+                   (unsigned long)joybus_reply,
+                   (unsigned long)(joybus_test_word ^ JOYBUS_REPLY_XOR));
             printf("\x1b[15;2HRe-enter page to retry.\n");
             break;
         case 7:
@@ -343,9 +365,13 @@ int main(int argc, char **argv)
             screen = SCREEN_HOME;
         }
 
-        if (screen == SCREEN_LINK && (down & PAD_BUTTON_X) &&
+        if (screen == SCREEN_LINK &&
+            (down & (PAD_BUTTON_X | PAD_BUTTON_Y)) &&
             link_status == 2 && !link_query_pending && !joybus_pending &&
             joybus_stage == 0) {
+            joybus_round = 0;
+            joybus_rounds_target = (down & PAD_BUTTON_Y) ? JOYBUS_STRESS_ROUNDS : 1;
+            joybus_test_word = JOYBUS_TEST_WORD_BASE;
             joybus_stage = 1;
             start_joybus_transfer(0xFF, 3); /* Joybus RESET */
         }
