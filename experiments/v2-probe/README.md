@@ -70,3 +70,18 @@ Use the artifact explicitly named `cubedeck-v2-probe-gba`, extracted from
 the **same workflow run** as the experimental GameCube DOL. On flashcarts,
 verify the launched filename corresponds to that experimental ROM rather
 than a previously cached diagnostic.
+
+## Hardware validation status
+
+**2026-10-10 — User-reported PASS on physical GameCube + GBA.** The user
+reported the GameCube's seven-of-seven 32-bit words acknowledged, and then
+**cyan** on the GBA after running the updated color-coded experimental v2
+probe. This is evidence of a successful v2 packet decode, CRC check,
+transfer-ID match and seven-byte sample verification on their real link.
+
+Important limitations: this is a user-reported manual test, not independently
+instrumented bus telemetry; it proves one fixed-ID, single-frame sample,
+not reliable multi-frame transmission, cartridge ROM access, save access,
+run-time emulator linkage, or repeated-session negotiation. Do not modify
+or replace the known-good diagnostic; treat later bulk-link tests as separate
+opt-in experiments and keep storage disconnected while investigating safety.
