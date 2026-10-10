@@ -42,4 +42,4 @@ This source has **not yet been compiled or tested in this environment**, and it 
 
 ## Roadmap
 
-The next project milestone is to add a separate GBA-side link probe and GameCube-side receiver. Those are not included as working binaries yet. Cartridge ROM dumping, controller input over link, and direct save access must be validated independently before being described as supported. The current controller monitor only reads GameCube controller ports; it does not communicate with a GBA.
+The link transport's safety gates, proposed frame format, and validation sequence are documented in [docs/gba-link-transport.md](docs/gba-link-transport.md). The next project milestone is to add a separate GBA-side link probe and GameCube-side receiver. Those are not included as working binaries yet. Cartridge ROM dumping, controller input over link, and direct save access must be validated independently before being described as supported. The current controller monitor only reads GameCube controller ports; it does not communicate with a GBA.
