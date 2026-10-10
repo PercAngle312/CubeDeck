@@ -9,9 +9,11 @@ endif
 TARGET := cubedeck-gba-diagnostic
 CC := $(DEVKITARM)/bin/arm-none-eabi-gcc
 OBJCOPY := $(DEVKITARM)/bin/arm-none-eabi-objcopy
-# The library is installed outside devkitARM's default include search path.
-# gba.specs is passed exactly once.
+# libgba is installed separately from devkitARM, so specify both its headers
+# and library. Keep gba.specs to configure the GBA startup/runtime.
 CFLAGS := -O2 -Wall -Wextra -mthumb -mthumb-interwork -I$(DEVKITPRO)/libgba/include -specs=gba.specs
+LDFLAGS := -L$(DEVKITPRO)/libgba/lib
+LDLIBS := -lgba
 
 .PHONY: all clean check-tools
 all: check-tools $(TARGET).gba
@@ -23,7 +25,7 @@ check-tools:
 	@test -f "$(DEVKITPRO)/libgba/lib/libgba.a" || (echo "Missing libgba library: $(DEVKITPRO)/libgba/lib/libgba.a"; exit 1)
 
 $(TARGET).elf: main.c
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
 
 $(TARGET).gba: $(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
