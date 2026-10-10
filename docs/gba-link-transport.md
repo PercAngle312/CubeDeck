@@ -1,52 +1,49 @@
 # CubeDeck GBA Link Transport — Implementation Notes
 
-Status: **first step implemented in source: asynchronous GBA device-type detection on GameCube Port 2. No Joybus payload exchange or multiboot upload is implemented yet.**
+Status: **GameCube Port 2 GBA detection is confirmed by the maintainer on physical hardware. A separate GBA-side diagnostic source and cloud build target have been added; compilation and Joybus exchange remain unverified.**
 
 ## Confirmed hardware path
 
-The relevant interface is the Nintendo GameCube-to-Game Boy Advance link cable (commonly DOL-011 or a compatible cable). It connects the GBA to the GameCube Serial Interface (SI) bus through a GameCube controller port. Open-source projects demonstrate that GameCube homebrew can upload a small GBA multiboot program and exchange Joybus commands with that running program.
+The Nintendo GameCube-to-Game Boy Advance link cable (commonly DOL-011 or compatible) connects the GBA to the GameCube Serial Interface (SI) bus through a GameCube controller port.
 
-Useful prior art:
-- [FIX94/gba-link-cable-rom-sender](https://github.com/FIX94/gba-link-cable-rom-sender) — GameCube/Wii homebrew that sends small multiboot GBA ROMs through the cable. Its source demonstrates asynchronous SI transfer callbacks and the Joybus command framing used for multiboot.
-- [FIX94/gba-link-cable-dumper](https://github.com/FIX94/gba-link-cable-dumper) — prior art for reading GBA ROMs and saves through the cable; this is not integrated into CubeDeck.
-- [afska/gba-link-connection](https://github.com/afska/gba-link-connection) — GBA-side library with a Joybus/LinkCube implementation.
-- [joypad-ai/joypad-os GBA link notes](https://github.com/joypad-ai/joypad-os/blob/main/docs/output/gba-link-cable.md) — further protocol and hardware notes.
+Prior art:
+- [FIX94/gba-link-cable-rom-sender](https://github.com/FIX94/gba-link-cable-rom-sender) — MIT-licensed GameCube/Wii multiboot sender; its SI calls and multiboot framing are useful references.
+- [FIX94/gba-link-cable-dumper](https://github.com/FIX94/gba-link-cable-dumper) — separate ROM/save reader project; not integrated.
+- [afska/gba-link-connection](https://github.com/afska/gba-link-connection) — GBA-side Joybus implementation in `lib/LinkCube.hpp`; it uses RCNT Joybus mode, JOYCNT flags, and high/low 16-bit transfer registers.
+- [joypad-ai/joypad-os GBA link notes](https://github.com/joypad-ai/joypad-os/blob/main/docs/output/gba-link-cable.md).
 
-These are reference projects, not code already integrated into CubeDeck. Check license terms and adapt only the minimum required code when implementing transfer.
+## Confirmed milestone: detection
 
-## Implemented: device-presence check
+CubeDeck calls `SI_GetTypeAsync(1, callback)` for GameCube Port 2. The maintainer reports that the app still boots and the GBA is detected on their hardware. This confirms device detection on that setup, not Joybus payload transfer.
 
-The CubeDeck menu includes **GBA link cable check (Port 2)**. It calls `SI_GetTypeAsync(1, callback)` to query SI channel 1 (GameCube Port 2), updates the page from the callback, and retries approximately once per second while the page is open.
+## Added: standalone GBA diagnostic source
 
-Safety boundaries:
-- It does not issue Joybus RESET/STATUS/READ/WRITE commands.
-- It does not upload or execute a GBA payload.
-- It does not read or write cartridge ROM or save data.
-- The callback is asynchronous; the menu loop does not busy-wait for a device response.
+`gba-diagnostic/main.c` is intended to compile as a normal GBA ROM for the existing flashcart. It:
+- switches the GBA link port into Joybus mode;
+- enables serial interrupts and reads/writes the 16-bit Joybus register halves explicitly;
+- starts with a fixed `CDBK` signature response and prepares a deterministic XOR reply after receiving a word;
+- changes screen color when receive count advances;
+- never accesses cartridge ROM or save memory.
 
-This change is source-committed but still needs a cloud compile and physical-cable validation. A no-device result is not proof that a cable or GBA is faulty until tested against a known-good cable and the supported hardware setup.
+`gba-diagnostic/Makefile` is a separate devkitARM/libgba target. GitHub Actions now has a separate GBA build job and artifact. This is **source-level progress only** until CI succeeds. The GameCube side still sends no Joybus requests, so no screen change is expected yet.
 
-## Important constraints
+## Protocol constraints
 
-- The GameCube↔GBA cable uses Joybus/SI, not the normal GBA multiplayer serial protocol. Do not confuse them.
-- Multiboot payloads are small; a diagnostic client should be kept tiny.
-- Joybus transfers are command-based and small. Bulk transfer needs chunking, pacing, sequence numbers, acknowledgements, checksums, timeouts, and cancellation.
-- The SuperCard occupies the GBA cartridge slot. The GBA cannot read a retail cartridge while the SuperCard is inserted. A ROM on the SuperCard SD is not automatically visible to the GameCube.
-- Do not attempt direct cartridge-save writing during link bring-up.
+- This is Joybus/SI, not ordinary GBA multiplayer serial mode.
+- Joybus register words are split into high and low 16-bit halves. Preserve word order on both ends.
+- Transfers must be paced; use callback completion, finite timeouts, retry/cancel handling, and disconnect-safe state. Never spin indefinitely waiting for SI completion.
+- The SuperCard occupies the cartridge slot. A retail cartridge cannot be read while the SuperCard is inserted; a ROM on the SuperCard SD is not automatically exposed to the GameCube.
+- No save writing during bring-up.
 
-## Next implementation milestones
+## Next milestones
 
-1. **Validate detection:** cloud compile, boot on GameCube, test Port 2 with cable/GBA connected and disconnected.
-2. **Multiboot diagnostic:** add a minimal GBA-side payload built with an explicit GBA toolchain. Reuse known-good SI/multiboot logic only after confirming its license and required dependencies.
-3. **Joybus proof:** exchange a fixed signature and counter with the running payload. Validate command byte order, transfer sizes, pacing, callback completion, timeout behavior, and disconnect recovery.
-4. **Chunked transport:** bounded chunks with sequence numbers, checksums, acknowledgements, retries, and cancellation.
-5. **Cartridge reader:** research a separate GBA-side program that reads the inserted retail cartridge ROM and streams it to the GameCube. This requires the retail cartridge to occupy the GBA slot, not the SuperCard.
-6. **Save support:** start read-only, identify save type, preserve backups, and validate per cartridge before any write path.
-7. **Emulation:** only after ROM transfer and integrity checks work. Real-time emulation on GameCube is a separate substantial engineering task.
+1. Confirm both CI jobs compile and produce artifacts.
+2. Add a GameCube-side, callback-driven Joybus diagnostic sender for fixed test words, with bounded timeouts and visible sent/received/error counters.
+3. Run the GBA diagnostic from the flashcart and verify a known signature/XOR response over the real cable.
+4. Only after repeatable round-trips, develop chunked transport with sequence numbers, checksums, acknowledgements, retries, and cancellation.
+5. Research cartridge ROM reading and save identification separately; keep initial save access read-only.
+6. Consider emulation only after ROM transfer and integrity checks are demonstrated.
 
-## Build and validation policy
+## Validation policy
 
-- Keep the known-working video initialization and framebuffer stride untouched.
-- Keep GameCube and GBA components as separate build targets with explicit toolchains.
-- A successful cloud compile is not proof of cable communication.
-- Never describe a feature as supported until the corresponding build and test have actually succeeded.
+Keep the working GameCube video initialization untouched. Build GameCube and GBA components with separate toolchains. A successful compile is not proof of communication; only record a Joybus milestone after actual request/response evidence.
