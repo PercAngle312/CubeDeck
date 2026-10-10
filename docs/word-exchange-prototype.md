@@ -40,3 +40,5 @@ packet implementation so far, and GCMCE is not used by these modules.
 ## Deterministic transport fault matrix
 
 The host-only `tests/test_word_exchange_fault_matrix.c` exercises full 759-byte, CRC-verified transfers after a missing acknowledgment, a corrupt response CRC, an incomplete response whose parser is reset by timeout, and an interrupted send that must be replayed. Each case also injects a delayed MANIFEST acknowledgment during DATA sequence zero and verifies that it is ignored. The receiver's mock sink checks sequential writes and rejects out-of-order offsets. All scenarios use synthetic bytes; this is not a console hardware test.
+
+The word scheduler now checks that a sender is freshly initialized with the 252-byte v2 chunk limit before sending any words. Passing an already-started or legacy 256-byte sender fails immediately rather than transmitting a manifest for a session that cannot continue.
