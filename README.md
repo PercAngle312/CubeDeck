@@ -1,45 +1,39 @@
 # CubeDeck — GameCube homebrew starter
 
-CubeDeck is a conservative first-stage Nintendo GameCube homebrew utility dashboard written in C with libogc. The project is configured for a cloud build so you do **not** need to install devkitPro or a compiler on your PC.
+CubeDeck is a Nintendo GameCube homebrew dashboard with an early GBA link-cable development path. Cloud builds mean you do **not** need to install a compiler on your PC.
 
-## Cloud build (recommended)
+## Cloud builds
 
-1. Open the repository's **Actions** tab.
-2. Select **Build CubeDeck** and press **Run workflow**, or let a push trigger it automatically.
-3. Open the completed workflow run and download the `cubedeck-gamecube` artifact.
-4. Extract the artifact and copy `cubedeck.dol` to your SD card for launch through Swiss.
+Open the repository's **Actions** tab and run **Build CubeDeck**, or let a push trigger it. The workflow publishes two artifacts when both jobs succeed:
 
-The workflow uses the `devkitpro/devkitppc` container. If the cloud build fails, use the workflow log as the source of truth; do not test a missing or incomplete artifact on hardware.
+- `cubedeck-gamecube`: GameCube `.dol` and `.elf`
+- `cubedeck-gba-diagnostic`: standalone GBA diagnostic `.gba` and `.elf`
 
-## Current features
+The GBA diagnostic is intended to run from your SuperCard/flashcart. CubeDeck does not yet upload it over the link cable. If a build fails, use the workflow log as the source of truth; do not test a missing or incomplete artifact.
 
-- Video initialization using libogc's preferred video mode
-- Text console UI and GameCube controller navigation (D-pad, A, B)
+## Current GameCube features
+
+- Text console UI and GameCube controller navigation
 - System information and About pages
-- Four-port GameCube controller monitor (connection status, buttons, sticks)
-- **GBA link cable detection check** on GameCube controller Port 2 using asynchronous SI device-type polling
+- Four-port GameCube controller monitor
+- GBA link cable detection on GameCube Port 2 using asynchronous SI device-type polling
 
-The GBA link page is only a device-presence check. It does **not** yet upload a GBA program, exchange Joybus payload data, read a cartridge, or access saves.
+The link page currently detects the device only. It does not yet send Joybus requests or transfer a program.
 
-This is a starter build, not a full system manager. It does not modify memory cards, IPL, or system settings.
+## GBA diagnostic payload
 
-## Real-hardware launch
+The separate `gba-diagnostic/` target is an experimental first GBA-side client. It switches the GBA link port into Joybus mode, enables serial interrupts, prepares a fixed signature response, and changes its screen color when it receives data. It does not read or write cartridge ROM/save memory.
 
-Use the homebrew launch method already supported by your console setup (for example, Swiss from SD). Copy the downloaded `cubedeck.dol` to your SD card and launch it from Swiss. Keep a known-good Swiss setup and the original project archive untouched.
+The source and cloud build target are committed, but compilation and real-cable behavior are not yet verified. The GameCube app currently sends no Joybus requests, so the GBA screen-color response is not expected to change until a matching sender is implemented.
 
-## Validation checklist
+## Hardware validation
 
-1. Confirm the GitHub Actions build succeeds and both expected output files are present.
-2. Launch the `.dol` from Swiss on the physical console and confirm the dashboard still displays correctly.
-3. Confirm D-pad selection works, A opens each page, and B returns.
-4. Check all four controller ports.
-5. With a compatible GameCube-to-GBA link cable connected to Port 2 and the GBA powered on, open **GBA link cable check** and observe whether it reports a GBA device. Also test with the cable disconnected.
-6. If it fails, record the console region/video cable, display mode, and exact failure point before changing code.
+1. Confirm the Actions workflow succeeds and both artifacts are present.
+2. Keep a copy of the last known-good `cubedeck.dol`.
+3. Launch the new GameCube artifact from Swiss and confirm the dashboard still boots.
+4. Run `cubedeck-gba-diagnostic.gba` from the GBA flashcart while the cable is connected to GameCube Port 2.
+5. At this stage, the GameCube app only detects the GBA; it does not yet send diagnostic words.
 
-## Honest status
+## Safety and roadmap
 
-The code change adding GBA detection has been committed, but this environment has not run the cloud build or tested the new check on Dolphin or a physical GameCube. A successful compile must be confirmed in GitHub Actions; actual cable detection must then be verified on hardware. Do not treat compilation alone as proof of communication.
-
-## Roadmap
-
-See [docs/gba-link-transport.md](docs/gba-link-transport.md) for protocol constraints and the staged implementation plan. Next: use the proven multiboot/SI implementation as a reference, add a tiny GBA-side diagnostic payload, and only then implement bounded Joybus request/response handling. Cartridge ROM reading and save access remain later, separately validated milestones.
+CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. Next, add a bounded GameCube Joybus test command path with callback-based completion and timeouts, then verify the signature/counter round-trip. Cartridge reading and save access remain later, separately validated milestones. See [docs/gba-link-transport.md](docs/gba-link-transport.md).
