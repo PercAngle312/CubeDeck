@@ -12,6 +12,11 @@
  * -1 for API error. Always produces an ACK/NACK on a valid invocation.
  * NACK sequence is the next expected data index after manifest acquisition.
  */
+/* Call only with a packet already CRC-validated by cdtp_decode or
+ * cdps_feed; passing unvalidated data bypasses frame integrity checks. */
+int cdsw_receive_decoded(cdvs_receiver *receiver,
+                         const cdtp_packet *packet, cdtp_packet *reply);
+
 int cdsw_receive_frame(cdvs_receiver *receiver, const uint32_t *words,
                        size_t word_count, cdtp_packet *reply);
 #endif
