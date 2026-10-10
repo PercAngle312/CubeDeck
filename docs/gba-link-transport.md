@@ -74,3 +74,9 @@ The new host test encodes/decodes the manifest and full-size chunks, exercises r
 `include/cubedeck/session_wire.h` and `protocol/session_wire.c` adapt complete CRC-protected wire frames to the manifest-first verified-session receiver. Valid manifest and data frames receive sequence-specific ACKs; invalid CRC, missing manifest, out-of-order chunks, and a failed FINISH checksum produce a NACK for the next expected data sequence. Duplicate manifest, duplicate last chunk, and duplicate FINISH are idempotent. The CI test simulates a corrupted manifest, corrupted data packet, lost chunk acknowledgment, out-of-order FINISH, and mismatching final image checksum.
 
 **This code is host-only and deliberately not connected to the GBA interrupt handler or GameCube SI state machine.** The existing tested XOR Joybus response semantics are preserved. Any future hardware framing must schedule ACK frames in a way compatible with the existing link timing. There are no memory-card or cartridge writes.
+
+## Incremental word stream parser (host only)
+
+`include/cubedeck/packet_stream.h` and `protocol/packet_stream.c` accumulate incoming Joybus-sized 32-bit words into a bounded CDTP frame. They reject unsupported version and overlong declared payload before buffering the full message, and only deliver frames whose CRC and padding validate. A magic value embedded in payload is treated as payload, not a reset command. The host test sweeps all 257 possible payload lengths (0 through 256), including payload-embedded magic values, and verifies bad-CRC and invalid-header recovery.
+
+This parser is **not** yet attached to the GBA IRQ routine or GameCube SI callback. A truncated valid-looking frame cannot be recognized without a timeout, so any future hardware integration must call `cdps_init` when the session restarts or a frame times out. No real-hardware test is needed for this host-only layer.
