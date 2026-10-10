@@ -30,9 +30,12 @@ static u8 joybus_res[32] ATTRIBUTE_ALIGN(32);
 static volatile int joybus_pending = 0;
 static volatile int joybus_callback_done = 0;
 static volatile u32 joybus_callback_result = 0;
-static int joybus_stage = 0; /* 0=idle, 1=RESET, 2=STATUS, 3=done, 4=failed */
+static int joybus_stage = 0; /* 0=idle, 1=RESET, 2=STATUS, 3=SEND, 4=READ, 5=pass, 6=fail */
 static u32 joybus_stage_frame = 0;
 static u8 joybus_status[3] = {0, 0, 0};
+static u32 joybus_reply = 0;
+#define JOYBUS_TEST_WORD 0x12345678u
+#define JOYBUS_EXPECTED_REPLY (JOYBUS_TEST_WORD ^ 0xA55A3CC3u)
 #define JOYBUS_TIMEOUT_FRAMES 120
 
 static const char *menu_items[MENU_COUNT] = {
@@ -129,6 +132,22 @@ static void start_joybus_transfer(u8 command, u32 response_length)
                 joybus_callback, 50);
 }
 
+static void start_joybus_word_send(void)
+{
+    memset(joybus_cmd, 0, sizeof(joybus_cmd));
+    memset(joybus_res, 0, sizeof(joybus_res));
+    joybus_cmd[0] = 0x15; /* Joybus receive/write command */
+    joybus_cmd[1] = (u8)(JOYBUS_TEST_WORD);
+    joybus_cmd[2] = (u8)(JOYBUS_TEST_WORD >> 8);
+    joybus_cmd[3] = (u8)(JOYBUS_TEST_WORD >> 16);
+    joybus_cmd[4] = (u8)(JOYBUS_TEST_WORD >> 24);
+    joybus_callback_done = 0;
+    joybus_callback_result = 0;
+    joybus_pending = 1;
+    joybus_stage_frame = frame_count;
+    SI_Transfer(1, joybus_cmd, 5, joybus_res, 1, joybus_callback, 50);
+}
+
 static void service_joybus_probe(void)
 {
     if (joybus_pending &&
@@ -153,6 +172,16 @@ static void service_joybus_probe(void)
     } else if (joybus_stage == 2) {
         memcpy(joybus_status, joybus_res, sizeof(joybus_status));
         joybus_stage = 3;
+        start_joybus_word_send();
+    } else if (joybus_stage == 3) {
+        joybus_stage = 4;
+        start_joybus_transfer(0x14, 5); /* Read the GBA's 32-bit reply */
+    } else if (joybus_stage == 4) {
+        joybus_reply = (u32)joybus_res[0] |
+                       ((u32)joybus_res[1] << 8) |
+                       ((u32)joybus_res[2] << 16) |
+                       ((u32)joybus_res[3] << 24);
+        joybus_stage = (joybus_reply == JOYBUS_EXPECTED_REPLY) ? 5 : 6;
     }
 }
 
@@ -181,25 +210,33 @@ static void draw_link(void)
     switch (joybus_stage) {
         case 0:
             if (link_status == 2)
-                printf("\x1b[13;2HPress X to run Joybus RESET then STATUS.\n");
+                printf("\x1b[13;2HPress X to run the two-way Joybus test.\n");
             else
-                printf("\x1b[13;2HX probe unlocks after GBA detection succeeds.\n");
+                printf("\x1b[13;2HX test unlocks after GBA detection succeeds.\n");
             break;
         case 1:
-            printf("\x1b[13;2HJoybus probe: waiting for RESET response...\n");
+            printf("\x1b[13;2HJoybus test: waiting for RESET...\n");
             break;
         case 2:
-            printf("\x1b[13;2HJoybus probe: waiting for STATUS response...\n");
+            printf("\x1b[13;2HJoybus test: waiting for STATUS...\n");
             break;
         case 3:
-            printf("\x1b[13;2HProbe complete. STATUS bytes: %02X %02X %02X\n",
-                   joybus_status[0], joybus_status[1], joybus_status[2]);
+            printf("\x1b[13;2HSending test word 12345678 to GBA...\n");
             break;
         case 4:
-            printf("\x1b[13;2HProbe failed or timed out. Re-enter page to retry.\n");
+            printf("\x1b[13;2HReading GBA diagnostic reply...\n");
+            break;
+        case 5:
+            printf("\x1b[13;2HTWO-WAY TEST PASSED! Reply: %08lX\n", (unsigned long)joybus_reply);
+            printf("\x1b[14;2HSTATUS: %02X %02X %02X\n", joybus_status[0], joybus_status[1], joybus_status[2]);
+            break;
+        case 6:
+            printf("\x1b[13;2HReply mismatch: %08lX (expected %08lX)\n",
+                   (unsigned long)joybus_reply, (unsigned long)JOYBUS_EXPECTED_REPLY);
+            printf("\x1b[14;2HRe-enter page to retry.\n");
             break;
     }
-    printf("\x1b[15;2HProbe sends no ROM or save-data commands.\n");
+    printf("\x1b[16;2HFixed diagnostic word only; no ROM/save data is sent.\n");
     printf("\x1b[17;2HConnect GBA to Port 2; detection checks repeat every second.\n");
     printf("\x1b[21;2HB: Back to main menu\n");
 }
