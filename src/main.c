@@ -121,7 +121,7 @@ int main(int argc, char **argv)
     }
 
     console_init(xfb, 20, 20, video_mode->fbWidth,
-                 video_mode->xfbHeight, video_mode->xfbHeight * video_mode->fbWidth * 2);
+                 video_mode->xfbHeight, video_mode->fbWidth * 2);
     VIDEO_Configure(video_mode);
     VIDEO_SetNextFramebuffer(xfb);
     VIDEO_SetBlack(FALSE);
