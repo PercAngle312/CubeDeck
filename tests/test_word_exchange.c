@@ -117,7 +117,7 @@ static int test_retry_exhaustion(void)
         size_t emitted = 0u;
         while (cdwx_next_word(&link, &word) == 1)
             ++emitted;
-        CHECK(emitted == CDTP_HEADER_WORDS + 2u + 1u);
+        CHECK(emitted == CDTP_HEADER_WORDS + 3u + 1u);
         CHECK(link.phase == CDWX_WAIT_REPLY);
         if (attempts != CDRL_MAX_RETRIES) {
             CHECK(cdwx_timeout(&link) == 0);
