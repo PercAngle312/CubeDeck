@@ -73,8 +73,22 @@ int cdwx_reply_word(cdwx_link *link, uint32_t word)
         link->phase = CDWX_FAILED;
         return -1;
     }
-    if (result == 0)
+    if (result == 0) {
+        cdgu_message decoded;
+        /* A current-session NACK has already consumed one retry in
+         * cdtx_reply. Replay immediately, without charging the retry
+         * budget again. A delayed/unrelated NACK must not restart TX. */
+        if (cdgu_decode(words, count, link->session_id, &decoded) == 0 &&
+            decoded.opcode == CDRL_OP_NACK &&
+            decoded.payload_length == 0u &&
+            link->sender->pending_valid &&
+            decoded.sequence == link->sender->pending.sequence) {
+            cdps_init(&link->replies);
+            link->next_word = 0u;
+            link->phase = CDWX_SENDING;
+        }
         return 0;
+    }
     cdps_init(&link->replies);
     return start_packet(link) < 0 ? -1 : 1;
 }
