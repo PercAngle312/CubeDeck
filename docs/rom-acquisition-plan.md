@@ -95,3 +95,15 @@ read or transmit any cartridge data.
 This planner is intentionally **not wired to the runtime**. A real multi-
 session protocol must add unique session IDs, absolute offsets, per-window
 manifests, and a final whole-image checksum before accepting such a dump.
+
+## Maximum-size single-window simulation
+
+`tests/test_stream_max_window.c` uses a synthetic byte generator and an
+in-memory verification callback (neither allocates a ROM-sized buffer) to
+exercise a complete **65,535-DATA-packet**, **16,776,960-byte** transfer in
+one manifest-first session. The test computes the preflight CRC32 using
+256-byte reads, passes every frame through the host streaming receiver,
+and requires a successful final checksum plus precisely bounded counters.
+This confirms the C implementation can reach the last 16-bit DATA sequence
+without wrapping, but does **not** demonstrate equivalent throughput or
+reliability on an actual GBA link cable.
