@@ -21,7 +21,12 @@ static int start_packet(cdwx_link *link)
 
 int cdwx_init(cdwx_link *link, cdtx_sender *sender, uint32_t session_id)
 {
-    if (!link || !sender || !session_id)
+    /* This scheduler requires a fresh v2 sender: accepting legacy 256-byte
+     * chunks would fail only after the manifest had already been sent. */
+    if (!link || !sender || !session_id ||
+        sender->chunk_capacity != CDGU_MAX_PAYLOAD ||
+        sender->phase != CDTX_MANIFEST || sender->pending_valid ||
+        sender->expected_length > CDBS_MAX_BYTES)
         return -1;
     memset(link, 0, sizeof(*link));
     link->sender = sender;
