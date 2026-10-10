@@ -20,7 +20,7 @@ The workflow uses the official `devkitpro/devkitppc` container, which includes t
 - System information page
 - Live controller input test
 - About page
-- Return to system menu option
+- Four-port GameCube controller monitor (connection status, buttons, sticks)
 
 This is a starter build, not a full system manager. It does not modify memory cards, IPL, or system settings.
 
@@ -32,8 +32,9 @@ Use the homebrew launch method already supported by your console setup (for exam
 
 1. Confirm the GitHub Actions build succeeds and both expected output files are present.
 2. Launch the `.dol` from Swiss on the physical console.
-3. Confirm video appears, D-pad selection works, A opens each page, B returns, controller values update, and the return-to-menu option works.
-4. If it fails, record the console region/video cable, display mode, and exact failure point before changing code.
+3. Confirm video appears, D-pad selection works, A opens each page, and B returns.
+4. Open Controller test and check all four ports; connect a controller to different ports and verify the status and input values.
+5. If it fails, record the console region/video cable, display mode, and exact failure point before changing code.
 
 ## Honest status
 
@@ -41,4 +42,4 @@ This source has **not yet been compiled or tested in this environment**, and it 
 
 ## Roadmap
 
-The next project milestone is a separate GBA-side link probe and GameCube-side receiver. Those are not included as working binaries yet. Cartridge ROM dumping, controller input over link, and direct save access must be validated independently before being described as supported.
+The next project milestone is to add a separate GBA-side link probe and GameCube-side receiver. Those are not included as working binaries yet. Cartridge ROM dumping, controller input over link, and direct save access must be validated independently before being described as supported. The current controller monitor only reads GameCube controller ports; it does not communicate with a GBA.
