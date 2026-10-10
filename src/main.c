@@ -346,7 +346,7 @@ int main(int argc, char **argv)
             start_joybus_transfer(0xFF, 3); /* Joybus RESET */
         }
 
-        if (screen == SCREEN_LINK && (joybus_stage == 1 || joybus_stage == 2))
+        if (screen == SCREEN_LINK && joybus_stage >= 1 && joybus_stage <= 4)
             service_joybus_probe();
 
         if (screen == SCREEN_LINK && joybus_stage == 0 && !link_query_pending &&
