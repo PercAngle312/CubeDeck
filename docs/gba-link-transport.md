@@ -56,3 +56,9 @@ Keep the known-working GameCube video initialization and framebuffer stride unto
 `tests/test_reliable_link.c` simulates a 4096-byte transfer, a corrupted packet (NACK then retransmission), a lost ACK (duplicate retry without duplicate append), mismatched ACK sequence, and retry exhaustion. **This is deliberately host-only: it does not make GameCube or GBA stream chunks yet, nor does it access any memory card, cartridge or storage device.** CI compiles the simulator independently from both console binaries.
 
 Future work: design GBA Joybus response scheduling for an actual frame-level ACK (distinct from the existing XOR word acknowledgment), connect one bounded chunk session to the console runtimes, and test only after substantial CI coverage.
+
+## Whole-transfer integrity (host only)
+
+The packet CRC32 protects individual frames but cannot prove that the receiver assembled the entire intended image. `include/cubedeck/image_integrity.h` and `protocol/image_integrity.c` add a RAM-only manifest carrying expected byte length and independent whole-image IEEE CRC32. The verifier returns incomplete for a short image, success only when both length and checksum match, and failure for overlong/corrupt images. The new CI simulation transfers 4096 bytes through the sender/receiver, checks the completed image against its manifest, then alters one byte to confirm rejection. The standard 123456789 CRC32 test vector is included.
+
+**Not yet wired to the GBA runtime**: the manifest must be transferred and authenticated in a later protocol milestone before accepting real content. The module does no memory-card, cartridge, or file I/O. No hardware retest is necessary for this host-only change.
