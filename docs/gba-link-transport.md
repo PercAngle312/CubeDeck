@@ -104,3 +104,11 @@ The sequence number bounds each independent streaming session to **65,535 DATA c
 ## Storage guard in CI
 
 `tests/check_runtime_storage_writes.py` rejects selected direct GameCube CARD, filesystem-write and GBA save-write API references found in the project's runtime and shared protocol C files. This is intentionally a **narrow static guard**; it cannot rule out indirect writes by libogc, Swiss, FlippyDrive or GCMCE firmware. The earlier memory-card incident remains unresolved, so disconnect the GCMCE for any future experimental hardware test.
+
+## Framed 128 KiB+ host-only streaming prototype
+
+The RAM-light receiver now has a `cdstw_receive_frame` bridge in `protocol/stream_wire.c`, which checks packet CRC32 and returns framed sequence-specific ACK/NACK packets. The new `protocol/stream_sender.c` is a callback-driven, bounded-memory sender: the caller supplies the image length and its precomputed CRC32, plus a reader callback. It caches the **current** packet so retries reproduce identical bytes even when the source callback would change. Neither side includes filesystem, cartridge, or GCMCE access.
+
+CI covers a **131,077-byte (128 KiB plus 5 bytes)** manifest-to-DATA-to-FINISH transfer over these two protocol components, plus corrupted frames, rejected consumer operations, lost acknowledgements, stale ACKs, and failed source reads. The built-in streaming session limit remains **16,776,960 bytes**, based on 65,535 data sequence numbers and 256-byte packet payloads. Actual physical Joybus bulk streaming has *not* been tested or wired into the console applications.
+
+**Protocol limitation:** current stop-and-wait ACK packets identify sequence only, not their corresponding opcode/phase. The MANIFEST and initial DATA packet both use sequence zero. The future hardware adaptation must disambiguate delayed ACKs across phases (for example by including the acknowledged opcode or a session identifier) before claiming robust bulk transfer. CRC32 guards accidental corruption but is **not** cryptographic authentication.
