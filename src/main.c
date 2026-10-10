@@ -30,7 +30,7 @@ static u8 joybus_res[32] ATTRIBUTE_ALIGN(32);
 static volatile int joybus_pending = 0;
 static volatile int joybus_callback_done = 0;
 static volatile u32 joybus_callback_result = 0;
-static int joybus_stage = 0; /* 0=idle, 1=RESET, 2=STATUS, 3=SEND, 4=READ, 5=pass, 6=fail */
+static int joybus_stage = 0; /* 0=idle, 1=RESET, 2=STATUS, 3=SEND, 4=READ, 5=pass, 6=mismatch, 7=transfer fail */
 static u32 joybus_stage_frame = 0;
 static u8 joybus_status[3] = {0, 0, 0};
 static u32 joybus_reply = 0;
@@ -153,7 +153,7 @@ static void service_joybus_probe(void)
     if (joybus_pending &&
         frame_count - joybus_stage_frame > JOYBUS_TIMEOUT_FRAMES) {
         /* Do not start another transfer: SI_Transfer has no cancellation API. */
-        joybus_stage = 4;
+        joybus_stage = 7;
         return;
     }
 
@@ -162,7 +162,7 @@ static void service_joybus_probe(void)
 
     joybus_callback_done = 0;
     if (joybus_callback_result != 0) {
-        joybus_stage = 4;
+        joybus_stage = 7;
         return;
     }
 
@@ -233,6 +233,10 @@ static void draw_link(void)
         case 6:
             printf("\x1b[13;2HReply mismatch: %08lX (expected %08lX)\n",
                    (unsigned long)joybus_reply, (unsigned long)JOYBUS_EXPECTED_REPLY);
+            printf("\x1b[14;2HRe-enter page to retry.\n");
+            break;
+        case 7:
+            printf("\x1b[13;2HJoybus transfer failed or timed out.\n");
             printf("\x1b[14;2HRe-enter page to retry.\n");
             break;
     }
