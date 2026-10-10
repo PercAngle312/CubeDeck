@@ -80,7 +80,8 @@ int cdwx_reply_word(cdwx_link *link, uint32_t word)
          * budget again. A delayed/unrelated NACK must not restart TX. */
         if (cdgu_decode(words, count, link->session_id, &decoded) == 0 &&
             decoded.opcode == CDRL_OP_NACK &&
-            decoded.payload_length == 0u &&
+            decoded.payload_length == 1u &&
+            decoded.payload[0] == link->sender->pending.opcode &&
             link->sender->pending_valid &&
             decoded.sequence == link->sender->pending.sequence) {
             cdps_init(&link->replies);
