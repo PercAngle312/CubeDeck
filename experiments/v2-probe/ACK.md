@@ -86,11 +86,12 @@ the binaries**, they fully restarted both the GameCube and the GBA, reran the
 previously failing experimental ACK/NACK test, and reported **everything
 passed** (including a preceding report of "3"). The success therefore
 belongs to the **existing installed ACK/NACK pair**, not to a later
-diagnostic build or any SD-card replacement. The exact GameCube retry count
-and GBA color for that run were not fully transcribed in the clarification;
-do not promote this observation to independently proven forced-NACK
-retransmission unless the visible retry count and acceptance result are
-confirmed.
+diagnostic build or any SD-card replacement. The user subsequently **explicitly confirmed 3/3 on GameCube and cyan on
+GBA** for that same successful restart/retry run. This verifies three
+packets completed the GBA's acceptance path in the ACK/NACK experiment.
+The GameCube's separate **Retries:** value was not reported, so whether
+the intentional packet-2 NACK actually caused a successful retransmission
+remains unconfirmed. Do not treat "3/3" as "Retries: 1".
 
 The earlier failure might be a transient startup / GBA Joybus state or
 timing problem, but the root cause has **not** been isolated. A cold restart
