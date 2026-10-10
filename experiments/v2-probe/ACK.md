@@ -37,3 +37,19 @@ then DOL through Swiss, enter link check and press A.
 
 If the test fails, note the GameCube's displayed last response and the GBA
 color. Don't reuse the stable probe as the partner to this ACK/NACK build.
+
+## RESET stall correction (2026-10-10)
+
+The first ACK/NACK experimental GameCube build could stay indefinitely on
+`Waiting for RESET`. The `joybus_stage == 1` callback handler had
+accidentally become an empty branch when the ACK query state machine was
+added. The RESET callback was consumed without starting the subsequent
+`SI_Transfer(1, 0x00, ..., 3)` STATUS command. This was an application
+state-machine regression, not evidence that the link cable or GBA failed.
+
+Corrected in the experimental `gamecube-ack.c` only: stage 1 now
+sets stage 2 and issues the 3-byte STATUS query. A CI source regression guard
+also checks the callback edge. The known-good single-frame and three-frame
+cyan-validated binaries were never modified. Users must download a *new*
+`cubedeck-v2-ack-gamecube` artifact from a successful build after this
+correction: the previously downloaded DOL will remain defective.
