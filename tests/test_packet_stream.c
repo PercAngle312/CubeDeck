@@ -2,9 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CHECK(x) do { if (!(x)) { \
-    fprintf(stderr, "FAIL %d: %s\n", __LINE__, #x); return 1; \
-} while (0)
+#define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL %d: %s\\n", __LINE__, #x); return 1; } } while (0)
 
 static int feed_packet(cdps_parser *parser, const cdtp_packet *input,
                        cdtp_packet *output, int corrupt)
