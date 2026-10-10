@@ -24,7 +24,7 @@ The stress test validates a short sequence of independent words. It does not yet
 
 `gba-diagnostic/main.c` is a standalone GBA ROM intended for a flashcart. It switches the GBA link port into Joybus mode, prepares a deterministic XOR response, and visibly changes screen color after each received word. It does not read or write cartridge ROM/save memory.
 
-The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, send-word, and read-reply. It uses bounded frame timeouts and does not busy-wait on SI. The 16-round test is started with Y; X runs one round.
+The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, send-word, and read-reply. It uses bounded frame timeouts and does not busy-wait on SI. The 16-round test is started with Y; X runs one round; A sends a host-encoded sample packet word-by-word. The A test verifies the XOR acknowledgement for each packet word, but the current GBA diagnostic does not parse the packet or independently validate its CRC.
 
 ## Transport constraints and design rules
 
