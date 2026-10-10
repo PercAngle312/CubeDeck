@@ -118,3 +118,7 @@ CI covers a **131,077-byte (128 KiB plus 5 bytes)** manifest-to-DATA-to-FINISH t
 The host-only streaming bridge now tags each successful ACK with **one payload byte identifying the acknowledged opcode**. The streaming sender accepts an ACK only when **both** the sequence and the acknowledged opcode match its cached outstanding packet. This closes a stop-and-wait ambiguity where a delayed ACK for MANIFEST sequence 0 could otherwise be mistaken for DATA sequence 0. Tests inject that exact stale-manifest-ACK case and confirm it does not advance the sender.
 
 NACKs still use zero payload and report the next sequence expected by the receiver. This change applies only to `cdtx_sender`/`cdstw_receive_frame`; earlier RAM-only protocol components retain their older ACK format and require the same phase distinction before being used in a real hardware bulk-transfer workflow.
+
+## Full streaming session through two word parsers (host only)
+
+`tests/test_stream_word_link.c` runs a **65,539-byte** manifest/DATA/FINISH exchange through the bounded sender, 32-bit-word packet encoder, incoming incremental parser, RAM-only streaming receiver, ACK generator, outgoing incremental parser and sender reply checker. The simulation injects a damaged data CRC, a truncated frame with explicit parser timeout/reset, and a lost ACK that forces an exactly duplicated DATA replay. It checks final bytes and CRC, all without touching the GameCube or GBA runtime paths. This is an additional **host-only** integration milestone, not proof of physical bulk-link operation.
