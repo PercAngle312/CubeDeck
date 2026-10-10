@@ -210,3 +210,12 @@ jobs:
             protocol/session_wire.c protocol/session_sender.c \
             tests/test_word_level_session.c -o /tmp/test-word-level-session
           /tmp/test-word-level-session
+
+  audit-storage-safety:
+    name: Audit runtime storage APIs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Reject direct memory-card and filesystem writes
+        run: python3 tests/check_runtime_storage_writes.py
