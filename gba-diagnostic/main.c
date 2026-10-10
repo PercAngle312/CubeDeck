@@ -13,7 +13,7 @@
 #define REG_JOY_TRANS_L  (*(volatile uint16_t *)0x04000154)
 #define REG_JOY_TRANS_H  (*(volatile uint16_t *)0x04000156)
 
-#define JOYCNT_RECEIVE (1u << 0) /* Receive-complete flag; write 1 to clear. */
+#define JOYCNT_RECEIVE (1u << 1) /* Receive-complete flag; write 1 to clear. */
 #define JOYCNT_IRQ     (1u << 6)
 #define JOY_SIGNATURE  0x4344424Bu /* "CDBK" */
 #define JOY_REPLY_XOR  0xA55A3CC3u
