@@ -133,3 +133,17 @@ jobs:
             protocol/verified_session.c protocol/session_wire.c \
             tests/test_session_wire.c -o /tmp/test-session-wire
           /tmp/test-session-wire
+
+  test-protocol-matrix:
+    name: Test all payload sizes and bit corruption
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile with sanitizers and run matrix
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c tests/test_protocol_matrix.c \
+            -o /tmp/test-protocol-matrix
+          /tmp/test-protocol-matrix
