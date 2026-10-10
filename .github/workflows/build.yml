@@ -283,3 +283,20 @@ jobs:
             protocol/chunk_session.c tests/test_stream_edges.c \
             -o /tmp/test-stream-edges
           /tmp/test-stream-edges
+
+  test-stream-word-link:
+    name: Test 64 KiB bidirectional word streaming
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and run full word-level stream
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/packet_stream.c \
+            protocol/image_integrity.c protocol/stream_receiver.c \
+            protocol/stream_wire.c protocol/stream_sender.c \
+            protocol/reliable_link.c protocol/chunk_session.c \
+            tests/test_stream_word_link.c -o /tmp/test-stream-word-link
+          /tmp/test-stream-word-link
