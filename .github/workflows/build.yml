@@ -615,3 +615,11 @@ jobs:
         with:
           name: cubedeck-v2-ack-gba
           path: experiments/v2-probe/out/cubedeck-v2-ack.gba
+
+  test-ack-probe-startup:
+    name: Guard ACK probe RESET to STATUS transition
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check RESET callback continues to STATUS
+        run: python3 tests/test_ack_probe_startup.py
