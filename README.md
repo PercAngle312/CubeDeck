@@ -20,11 +20,11 @@ The GBA diagnostic is intended to run from your SuperCard/flashcart. CubeDeck do
 - Callback-driven Joybus RESET/STATUS and two-way diagnostic word exchange
 - Framed-packet word-by-word smoke test (A), one-round verification (X), and a 16-round sequential-word stress test (Y)
 
-**Physical-hardware validation:** the diagnostic exchange works, and the maintainer confirmed **16/16 replies valid** in the sequential-word stress test. This is not yet bulk ROM transfer or TV playback.
+**Physical-hardware validation:** the maintainer confirmed **16/16 replies valid** in the sequential-word stress test and **6/6 packet words acknowledged** with the GBA screen turning **cyan** after decoding the complete sample packet, checking CRC32 and all seven payload bytes. The reported CRC word was `0x5DD2BACF` and the final XOR reply `0xF888860C`. This verifies a sample packet end-to-end on real hardware, **not** bulk ROM transfer or TV playback.
 
 ## GBA diagnostic payload
 
-The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It switches the GBA link port into Joybus mode, prepares a deterministic XOR reply, and changes its screen color when it receives data. It does not read or write cartridge ROM or save memory.
+The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It switches the GBA link port into Joybus mode, prepares a deterministic XOR reply, and changes its screen color when it receives data. The latest diagnostic also captures, decodes and CRC-verifies a framed sample packet, using cyan to indicate the complete sample matched. It does not read or write cartridge ROM or save memory.
 
 ## Hardware validation
 
@@ -32,11 +32,11 @@ The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It s
 2. Keep a copy of the last known-good `.dol` and `.gba`.
 3. Launch the GameCube artifact from Swiss and run the GBA diagnostic from the flashcart.
 4. Open the GBA link page and press A for the framed-packet word smoke test, X for one round, or Y for the 16-round stress test.
-5. The A test checks the reply to each encoded word; the GBA side still uses its simple XOR responder and does not parse the packet.
+5. The A test checks the reply to each encoded word, while the current GBA diagnostic additionally decodes and CRC-verifies the complete sample packet; cyan confirms matching payload bytes. Keep the GCMCE disconnected during experimental hardware testing pending investigation of an earlier unrelated/uncertain memory-card corruption incident.
 
 ## Roadmap
 
-1. Portable packet framing v1 is host-tested and now used by the GameCube A-button smoke test. The GBA diagnostic still acknowledges each word with XOR rather than parsing the packet.
+1. Portable packet framing v1 is host-tested and now used by the GameCube A-button smoke test. The GBA diagnostic now both acknowledges each word with XOR and passively parses the complete sample packet; this path passed the physical-hardware cyan-screen check.
 2. Add GBA-side packet parsing and verify a payload byte-for-byte on real hardware.
 3. Evaluate established GBA Link Cable Dumper code/workflow for reading retail cartridges; keep SuperCard SD-file access as a separate question.
 4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
