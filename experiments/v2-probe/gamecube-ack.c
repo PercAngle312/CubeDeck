@@ -252,7 +252,12 @@ static void service_joybus_probe(void)
         } else {
             joybus_stage = 6;
         }
-    } else if (joybus_stage == 1) {    } else if (joybus_stage == 2) {
+    } else if (joybus_stage == 1) {
+        /* RESET completed. Continue with the proven STATUS handshake
+         * before any framed words or packet-verdict queries. */
+        joybus_stage = 2;
+        start_joybus_transfer(0x00, 3);
+    } else if (joybus_stage == 2) {
         memcpy(joybus_status, joybus_res, sizeof(joybus_status));
         joybus_stage = 3;
         if (joybus_test_mode == 3) {
