@@ -72,8 +72,13 @@ int main(void)
         uint32_t count = received_count;
         if (count != shown_count) {
             shown_count = count;
-            uint16_t shade = (uint16_t)(count & 31u);
-            paint_screen(RGB5(shade, (uint16_t)((count >> 1) & 31u), 20));
+            /* Use unmistakably different colors so a received word is visible. */
+            switch (count & 3u) {
+                case 1: paint_screen(RGB5(31, 0, 0)); break;  /* red */
+                case 2: paint_screen(RGB5(0, 31, 0)); break;  /* green */
+                case 3: paint_screen(RGB5(31, 31, 0)); break; /* yellow */
+                default: paint_screen(RGB5(31, 0, 31)); break; /* magenta */
+            }
         }
         VBlankIntrWait();
     }
