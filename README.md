@@ -45,7 +45,7 @@ The shared C protocol modules now support packet CRC32, sequence checking, idemp
 1. Portable packet framing v1 is host-tested and now used by the GameCube A-button smoke test. The GBA diagnostic now both acknowledges each word with XOR and passively parses the complete sample packet; this path passed the physical-hardware cyan-screen check.
 2. The GBA-side seven-byte packet parser is hardware-verified. Next integrate bounded chunk framing, timeouts, and opcode-bound ACK handling into the Joybus runtimes before requesting another hardware test.
 3. Evaluate established GBA Link Cable Dumper code/workflow for reading retail cartridges; keep SuperCard SD-file access as a separate question.
-4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
+4. Evaluate **Visual Boy Advance GX**, an existing GameCube GBA emulator, as the playback backend; its current releases already support GBA emulation on GameCube. See [docs/emulator-backend.md](docs/emulator-backend.md) for the integration sequence. CubeDeck does not yet launch it.
 5. Investigate save access separately, starting read-only and protecting existing saves.
 
 CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. See [docs/gba-link-transport.md](docs/gba-link-transport.md) for transport details and validation rules, and [docs/rom-acquisition-plan.md](docs/rom-acquisition-plan.md) for the separate, read-only retail-cartridge multiboot roadmap.
