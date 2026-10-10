@@ -233,3 +233,19 @@ jobs:
             protocol/stream_receiver.c protocol/image_integrity.c \
             tests/test_stream_receiver.c -o /tmp/test-stream-receiver
           /tmp/test-stream-receiver
+
+  test-stream-wire:
+    name: Test 128 KiB framed stream and retries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and run large stream simulation
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/image_integrity.c \
+            protocol/stream_receiver.c protocol/stream_wire.c \
+            protocol/reliable_link.c protocol/chunk_session.c \
+            tests/test_stream_wire.c -o /tmp/test-stream-wire
+          /tmp/test-stream-wire
