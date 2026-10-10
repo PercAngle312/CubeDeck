@@ -12,7 +12,6 @@
 #define REG_JOY_RECV_H   (*(volatile uint16_t *)0x04000152)
 #define REG_JOY_TRANS_L  (*(volatile uint16_t *)0x04000154)
 #define REG_JOY_TRANS_H  (*(volatile uint16_t *)0x04000156)
-#define REG_RCNT         (*(volatile uint16_t *)0x04000134)
 
 #define JOYCNT_RECEIVE (1u << 1)
 #define JOYCNT_SEND    (1u << 2)
