@@ -106,12 +106,6 @@ static void test_rejects_corruption_and_bad_shape(void)
     CHECK(cdtp_decode(words, count - 1u, &output) == CDTP_ERR_FORMAT);
     CHECK(cdtp_decode(words, count + 1u, &output) == CDTP_ERR_FORMAT);
 
-    /* Nonzero bytes after the declared payload are not canonical padding. */
-    words[3] = 0x04030201u;
-    words[3] |= 0xAA000000u;
-    CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
-    words[3] = 0x04030201u;
-
     words[0] = 0u;
     CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
     words[0] = CDTP_MAGIC;
@@ -120,6 +114,25 @@ static void test_rejects_corruption_and_bad_shape(void)
     words[1] = 0x01020700u;
     words[2] = CDTP_MAX_PAYLOAD + 1u;
     CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_TOO_LARGE);
+}
+
+
+static void test_rejects_nonzero_padding(void)
+{
+    cdtp_packet input;
+    cdtp_packet output;
+    uint32_t words[CDTP_MAX_PACKET_WORDS];
+    size_t count = 0;
+
+    memset(&input, 0, sizeof(input));
+    input.opcode = 1u;
+    input.payload_length = 3u;
+    input.payload[0] = 0x11u;
+    input.payload[1] = 0x22u;
+    input.payload[2] = 0x33u;
+    CHECK(cdtp_encode(&input, words, CDTP_MAX_PACKET_WORDS, &count) == CDTP_OK);
+    words[3] |= 0xAA000000u;
+    CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
 }
 
 static void test_argument_and_capacity_errors(void)
@@ -143,6 +156,7 @@ int main(void)
     test_payload_round_trip();
     test_max_payload();
     test_rejects_corruption_and_bad_shape();
+    test_rejects_nonzero_padding();
     test_argument_and_capacity_errors();
 
     if (failures != 0) {
