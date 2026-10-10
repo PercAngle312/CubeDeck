@@ -82,3 +82,16 @@ Add a **separate** GameCube opt-in multiboot handshake module and GBA
 read-only probe target, both exercised by GitHub Actions. Do not replace the
 working `cubedeck.dol` diagnostic code path by default. Only request a
 hardware test after cloud compilation and host handshake replay tests pass.
+
+## Large-image segment planning (host only)
+
+`protocol/transfer_segments.c` provides a constant-memory transfer planner
+which divides a larger logical image into windows that fit the streaming
+session's **65,535** data sequence numbers. A 32 MiB image needs **three**
+sessions (16,776,960 + 16,776,960 + 512 bytes), and the host-only CI test
+validates contiguous windows for 32 and 64 MiB scenarios. It does not
+read or transmit any cartridge data.
+
+This planner is intentionally **not wired to the runtime**. A real multi-
+session protocol must add unique session IDs, absolute offsets, per-window
+manifests, and a final whole-image checksum before accepting such a dump.
