@@ -9,7 +9,8 @@ typedef enum {
     SCREEN_HOME = 0,
     SCREEN_SYSTEM,
     SCREEN_CONTROLLER,
-    SCREEN_ABOUT
+    SCREEN_ABOUT,
+    SCREEN_EXIT
 } Screen;
 
 static GXRModeObj *video_mode;
@@ -20,7 +21,7 @@ static const char *menu_items[MENU_COUNT] = {
     "System information",
     "Controller test",
     "About CubeDeck",
-    "Return to system menu"
+    "Exit (use Swiss reset)"
 };
 
 static void draw_header(void)
@@ -89,6 +90,17 @@ static void draw_about(void)
     printf("\x1b[21;2HB: Back to main menu\n");
 }
 
+static void draw_exit(void)
+{
+    draw_header();
+    printf("\x1b[5;2HEXIT CUBEDECK\n");
+    printf("\x1b[7;2HTo avoid a crash, CubeDeck does not attempt\n");
+    printf("\x1b[8;2Hto return directly to the system menu.\n");
+    printf("\x1b[10;2HUse Swiss to launch another app or reset\n");
+    printf("\x1b[11;2Hthe console using your normal setup.\n");
+    printf("\x1b[21;2HB: Back to main menu\n");
+}
+
 static void render(void)
 {
     printf("\x1b[2J");
@@ -97,6 +109,7 @@ static void render(void)
         case SCREEN_SYSTEM:     draw_system(); break;
         case SCREEN_CONTROLLER: draw_controller(); break;
         case SCREEN_ABOUT:      draw_about(); break;
+        case SCREEN_EXIT:       draw_exit(); break;
     }
 }
 
@@ -144,7 +157,7 @@ int main(int argc, char **argv)
                     case 0: screen = SCREEN_SYSTEM; break;
                     case 1: screen = SCREEN_CONTROLLER; break;
                     case 2: screen = SCREEN_ABOUT; break;
-                    case 3: SYS_ResetSystem(SYS_RETURNTOMENU, 0, 0); break;
+                    case 3: screen = SCREEN_EXIT; break;
                 }
             }
         } else if (down & PAD_BUTTON_B) {
