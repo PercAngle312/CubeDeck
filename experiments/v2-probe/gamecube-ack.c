@@ -52,6 +52,27 @@ static u32 v2_resume_frame = 0u;
 static unsigned int ack_retries = 0u;
 static unsigned int ack_recoveries = 0u;
 #define CDAP_MAX_RETRIES 2u
+/* Failure snapshot: diagnostics only, never initiate another SI transfer
+ * after a callback failure or a pending-transfer watchdog expiry. */
+enum {
+    CDAP_FAIL_NONE = 0, CDAP_FAIL_WATCHDOG = 1,
+    CDAP_FAIL_SI_CALLBACK = 2, CDAP_FAIL_RETRY_LIMIT = 3,
+    CDAP_FAIL_BUILD = 4
+};
+static unsigned int failure_reason = CDAP_FAIL_NONE;
+static int failure_stage = 0;
+static u32 failure_callback_result = 0u;
+static u32 failure_reply = 0u;
+
+static void fail_probe(unsigned int reason)
+{
+    failure_reason = reason;
+    failure_stage = joybus_stage;
+    failure_callback_result = joybus_callback_result;
+    failure_reply = joybus_reply;
+    joybus_stage = 7;
+}
+
 
 static int build_v2_frame(unsigned int index)
 {
@@ -190,7 +211,7 @@ static void service_joybus_probe(void)
     if (joybus_pending &&
         frame_count - joybus_stage_frame > JOYBUS_TIMEOUT_FRAMES) {
         /* Do not start another transfer: SI_Transfer has no cancellation API. */
-        joybus_stage = 7;
+        fail_probe(CDAP_FAIL_WATCHDOG);
         return;
     }
 
@@ -209,7 +230,7 @@ static void service_joybus_probe(void)
 
     joybus_callback_done = 0;
     if (joybus_callback_result != 0) {
-        joybus_stage = 7;
+        fail_probe(CDAP_FAIL_SI_CALLBACK);
         return;
     }
 
@@ -228,7 +249,7 @@ static void service_joybus_probe(void)
             } else {
                 ++v2_frame_index;
                 if (build_v2_frame(v2_frame_index) != 0) {
-                    joybus_stage = 7;
+                    fail_probe(CDAP_FAIL_BUILD);
                     return;
                 }
                 joybus_test_word = joybus_packet_words[0];
@@ -238,12 +259,12 @@ static void service_joybus_probe(void)
         } else if (joybus_reply == CDAP_NACK(v2_frame_index + 1u) ||
                    joybus_reply == CDAP_PENDING) {
             if (++ack_retries > CDAP_MAX_RETRIES) {
-                joybus_stage = 7;
+                fail_probe(CDAP_FAIL_RETRY_LIMIT);
                 return;
             }
             ++ack_recoveries;
             if (build_v2_frame(v2_frame_index) != 0) {
-                joybus_stage = 7;
+                fail_probe(CDAP_FAIL_BUILD);
                 return;
             }
             joybus_test_word = joybus_packet_words[0];
@@ -382,8 +403,15 @@ static void draw_link(void)
                    v2_frame_index);
             break;
         case 7:
-            printf("\x1b[13;2HJoybus transfer failed or timed out.\n");
-            printf("\x1b[14;2HRe-enter page to retry.\n");
+            printf("\x1b[13;2HFAIL code %u at stage %d, frame %u/3\n",
+                   failure_reason, failure_stage, v2_frame_index + 1u);
+            printf("\x1b[14;2HWord %lu/%lu  retry %u  pending %d\n",
+                   (unsigned long)(joybus_packet_word_index + 1u),
+                   (unsigned long)joybus_packet_word_count,
+                   ack_retries, joybus_pending);
+            printf("\x1b[15;2HSI result %08lX  last reply %08lX\n",
+                   (unsigned long)failure_callback_result,
+                   (unsigned long)failure_reply);
             break;
     }
     printf("\x1b[16;2H3 verified frames, retry test; no ROM/save I/O.\n");
@@ -498,6 +526,10 @@ int main(int argc, char **argv)
             joybus_test_word = JOYBUS_TEST_WORD_BASE;
             if (down & PAD_BUTTON_A) {
                 v2_frame_index = 0u;
+                failure_reason = CDAP_FAIL_NONE;
+                failure_stage = 0;
+                failure_callback_result = 0u;
+                failure_reply = 0u;
                 ack_retries = 0u;
                 ack_recoveries = 0u;
                 if (build_v2_frame(0u) != 0) {
