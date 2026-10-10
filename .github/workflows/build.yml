@@ -441,3 +441,22 @@ jobs:
               -O1 -mcpu=arm7tdmi -mthumb -c "$file" \
               -o "/tmp/cd-arm-objects/$(basename "$file" .c).o"
           done
+
+  test-word-exchange:
+    name: Test nonblocking word exchange with retries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Run CRC-bound nonblocking reply simulation
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c protocol/image_integrity.c \
+            protocol/packet_stream.c protocol/stream_receiver.c \
+            protocol/stream_sender.c protocol/stream_wire.c \
+            protocol/session_guard.c protocol/bound_stream.c \
+            protocol/word_exchange.c tests/test_word_exchange.c \
+            -o /tmp/test-word-exchange
+          /tmp/test-word-exchange
