@@ -80,7 +80,8 @@ cdtp_status cdtp_decode(const uint32_t *words, size_t word_count,
 {
     uint32_t metadata;
     uint16_t payload_length;
-    uint8_t payload[CDTP_MAX_PAYLOAD];
+    /* Initialized for toolchain portability, including zero-byte frames. */
+    uint8_t payload[CDTP_MAX_PAYLOAD] = {0};
     size_t payload_words;
     size_t expected_words;
     size_t i;
