@@ -1,49 +1,50 @@
 # CubeDeck GBA Link Transport — Implementation Notes
 
-Status: **GBA detection and a two-way Joybus word exchange are confirmed by the maintainer on physical hardware. The next hardware check is a 16-round sequential-word stress test.**
+Status: **Physical-hardware verified: GBA detection, one two-way diagnostic exchange, and a 16-round sequential-word stress test (16/16 valid replies).** This validates repeated Joybus request/reply transactions, not bulk ROM transfer.
 
 ## Confirmed hardware path
 
-The Nintendo GameCube-to-Game Boy Advance link cable (commonly DOL-011 or compatible) connects the GBA to the GameCube Serial Interface (SI) bus through a GameCube controller port.
+The Nintendo GameCube-to-Game Boy Advance link cable (commonly DOL-011 or compatible) connects the GBA to the GameCube Serial Interface (SI) bus through a GameCube controller port. CubeDeck currently uses Port 2 / SI channel 1.
 
 Prior art:
-- [FIX94/gba-link-cable-rom-sender](https://github.com/FIX94/gba-link-cable-rom-sender) — MIT-licensed GameCube/Wii multiboot sender; its SI calls and multiboot framing are useful references.
-- [FIX94/gba-link-cable-dumper](https://github.com/FIX94/gba-link-cable-dumper) — separate ROM/save reader project; not integrated.
-- [afska/gba-link-connection](https://github.com/afska/gba-link-connection) — GBA-side Joybus implementation in `lib/LinkCube.hpp`; it uses RCNT Joybus mode, JOYCNT flags, and high/low 16-bit transfer registers.
+- [FIX94/gba-link-cable-rom-sender](https://github.com/FIX94/gba-link-cable-rom-sender) — MIT-licensed GameCube/Wii multiboot sender. It reads GBA ROM files from the GameCube-side SD filesystem and sends them to a GBA; this is the opposite direction from dumping a cartridge to the GameCube.
+- [FIX94/gba-link-cable-dumper](https://github.com/FIX94/gba-link-cable-dumper) — GameCube/Wii homebrew that can dump GBA BIOS, cartridge ROMs, and saves over the link cable. Its README describes booting the GBA with no cartridge, then inserting the cartridge when prompted; it also documents a Start+Select boot workaround for some setups. Its stated 32 MiB ROM dump estimate is about 48 minutes, illustrating the cable protocol's throughput limits.
+- [afska/gba-link-connection](https://github.com/afska/gba-link-connection) — GBA-side Joybus implementation in `lib/LinkCube.hpp`; useful reference for RCNT Joybus mode, JOYCNT flags, and high/low 16-bit transfer registers.
 - [joypad-ai/joypad-os GBA link notes](https://github.com/joypad-ai/joypad-os/blob/main/docs/output/gba-link-cable.md).
 
-## Confirmed milestones: detection and round-trip
+## Hardware-confirmed milestones
 
-CubeDeck calls `SI_GetTypeAsync(1, callback)` for GameCube Port 2. The maintainer confirmed that the GBA is detected and that the two-way diagnostic exchange works on physical hardware: the GBA screen visibly changes color after receiving a word, and the GameCube reads the expected reply `B76E6ABB`. This confirms one diagnostic word exchange, not sustained transfer or ROM access.
+1. `SI_GetTypeAsync(1, callback)` detects the GBA on GameCube Port 2.
+2. A diagnostic word exchange changed the GBA screen and returned the expected GameCube reply `B76E6ABB`.
+3. The maintainer ran the 16-round sequential-word test on physical hardware; all **16/16 replies passed**.
 
-## Added: standalone GBA diagnostic source
+The stress test validates a short sequence of independent words. It does not yet validate large payloads, sustained transfer, cartridge reads, ROM loading, save access, or TV playback.
 
-`gba-diagnostic/main.c` is intended to compile as a normal GBA ROM for the existing flashcart. It:
-- switches the GBA link port into Joybus mode;
-- enables serial interrupts and reads/writes the 16-bit Joybus register halves explicitly;
-- starts with a fixed `CDBK` signature response and prepares a deterministic XOR reply after receiving a word;
-- changes screen color when receive count advances;
-- never accesses cartridge ROM or save memory.
+## Current diagnostic implementation
 
-`gba-diagnostic/Makefile` is a separate devkitARM/libgba target. GitHub Actions now has a separate GBA build job and artifact. CI builds both targets. The maintainer has also verified the matching sender/receiver on a real cable. The new stress-test path is not yet hardware verified.
+`gba-diagnostic/main.c` is a standalone GBA ROM intended for a flashcart. It switches the GBA link port into Joybus mode, prepares a deterministic XOR response, and visibly changes screen color after each received word. It does not read or write cartridge ROM/save memory.
 
-## Protocol constraints
+The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, send-word, and read-reply. It uses bounded frame timeouts and does not busy-wait on SI. The 16-round test is started with Y; X runs one round.
+
+## Transport constraints and design rules
 
 - This is Joybus/SI, not ordinary GBA multiplayer serial mode.
-- Joybus register words are split into high and low 16-bit halves. Preserve word order on both ends.
-- Transfers must be paced; use callback completion, finite timeouts, retry/cancel handling, and disconnect-safe state. Never spin indefinitely waiting for SI completion.
-- The SuperCard occupies the cartridge slot. A retail cartridge cannot be read while the SuperCard is inserted; a ROM on the SuperCard SD is not automatically exposed to the GameCube.
-- No save writing during bring-up.
+- Joybus words are split into high and low 16-bit halves. Preserve word order on both ends.
+- Keep each SI operation callback-driven and bounded. A timeout must not start a second transfer while the previous SI operation may still be active, because libogc does not expose a cancellation API here.
+- A passing single-word or short stress test is not proof of reliable bulk transport. Bulk transfer needs explicit framing, monotonically increasing sequence numbers, integrity checks, acknowledgements, retry limits, cancellation, and a final whole-image verification.
+- Do not write save data during bring-up.
+- The SuperCard's SD filesystem is not automatically exposed to the GameCube over the link cable. A SuperCard backup file cannot be assumed readable by generic GBA cartridge-bus reads.
 
 ## Next milestones
 
-1. Confirm both CI jobs compile and produce artifacts.
-2. Run the new 16-round sequential-word stress test and confirm every reply on hardware.
-3. Develop chunked transport with sequence numbers, checksums, acknowledgements, retries, and cancellation.
-4. Investigate separate ROM acquisition paths for physical cartridges and SuperCard SD files; neither is currently exposed to the GameCube.
-5. Research save identification and read-only access separately; do not write saves during bring-up.
-6. Consider emulation only after ROM transfer and integrity checks are demonstrated.
+1. Keep the verified diagnostic and its current artifacts as the baseline.
+2. Design and host-test packet framing, word ordering, checksum, retry, and resume behavior before wiring bulk transfer into the UI.
+3. Prototype a small bounded payload transfer between CubeDeck and a dedicated GBA test ROM; verify byte-for-byte integrity on hardware before increasing payload size.
+4. For cartridge ROM acquisition, evaluate the established [GBA Link Cable Dumper](https://github.com/FIX94/gba-link-cable-dumper) workflow before reimplementing cartridge access. Confirm whether its boot/insert-cartridge flow works with the user's GBA and carts.
+5. Investigate SuperCard SD-file access separately; do not conflate it with reading a retail cartridge.
+6. Only after verified ROM acquisition, choose a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
+7. Research save identification and read-only access separately; preserve existing saves and avoid writes during initial validation.
 
 ## Validation policy
 
-Keep the working GameCube video initialization untouched. Build GameCube and GBA components with separate toolchains. A successful compile is not proof of communication; only record a Joybus milestone after actual request/response evidence.
+Keep the known-working GameCube video initialization and framebuffer stride untouched. Build GameCube and GBA components with separate toolchains. CI success proves compilation/artifact creation only. Record hardware milestones only after real request/response or data-integrity evidence.
