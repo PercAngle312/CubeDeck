@@ -123,9 +123,74 @@ static int run(void)
     return 0;
 }
 
+static int test_opcode_bound_negative_reply(void)
+{
+    state s;
+    cdtx_sender sender;
+    cdst_receiver receiver;
+    cdgu_message wrong, nack;
+    uint32_t request[CDTP_MAX_PACKET_WORDS];
+    uint32_t answer[CDTP_MAX_PACKET_WORDS];
+    size_t count, response_count;
+    const uint32_t id = 0xA54BCD72u;
+    memset(&s, 0, sizeof(s));
+    s.source[0] = 0x42u;
+    cdst_init(&receiver, write_target, &s);
+    CHECK(cdbs_init_sender(&sender, read_source, &s, 1u,
+                           cdim_crc32(s.source, 1u)) == 0);
+    CHECK(cdbs_next_frame(&sender, id, request,
+                          CDTP_MAX_PACKET_WORDS, &count) == 1);
+    CHECK(cdbs_receive(&receiver, id, request, count, answer,
+                       CDTP_MAX_PACKET_WORDS, &response_count) == 1);
+    CHECK(cdbs_sender_reply(&sender, id, answer, response_count) == 1);
+    CHECK(sender.phase == CDTX_DATA);
+    /* A late, conflicting MANIFEST must produce a MANIFEST-bound NACK,
+     * which must not penalize the pending DATA sequence zero. */
+    memset(&wrong, 0, sizeof(wrong));
+    wrong.session_id = id;
+    wrong.opcode = CDVS_OP_MANIFEST;
+    wrong.payload_length = CDVS_MANIFEST_BYTES;
+    wrong.payload[0] = 2u;
+    CHECK(cdgu_encode(&wrong, request, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    CHECK(cdbs_receive(&receiver, id, request, count, answer,
+                       CDTP_MAX_PACKET_WORDS, &response_count) == 1);
+    CHECK(cdgu_decode(answer, response_count, id, &nack) == 0);
+    CHECK(nack.opcode == CDRL_OP_NACK &&
+          nack.payload_length == 1u &&
+          nack.payload[0] == CDVS_OP_MANIFEST);
+    CHECK(cdbs_next_frame(&sender, id, request,
+                          CDTP_MAX_PACKET_WORDS, &count) == 1);
+    CHECK(cdbs_sender_reply(&sender, id, answer, response_count) == 0);
+    CHECK(sender.retries == 0u && sender.phase == CDTX_DATA);
+
+    /* An invalid DATA sequence causes a matching DATA-bound NACK.
+     * It requests a retry without advancing the receiver's offset. */
+    wrong.opcode = CDCS_OP_DATA;
+    wrong.sequence = 9u;
+    wrong.payload_length = 1u;
+    wrong.payload[0] = 0x42u;
+    CHECK(cdgu_encode(&wrong, request, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    CHECK(cdbs_receive(&receiver, id, request, count, answer,
+                       CDTP_MAX_PACKET_WORDS, &response_count) == 1);
+    CHECK(cdgu_decode(answer, response_count, id, &nack) == 0);
+    CHECK(nack.opcode == CDRL_OP_NACK &&
+          nack.sequence == 0u &&
+          nack.payload_length == 1u &&
+          nack.payload[0] == CDCS_OP_DATA);
+    CHECK(cdbs_sender_reply(&sender, id, answer, response_count) == 0);
+    CHECK(sender.retries == 1u && receiver.offset == 0u);
+    CHECK(cdbs_next_frame(&sender, id, request,
+                          CDTP_MAX_PACKET_WORDS, &count) == 1);
+    CHECK(cdbs_receive(&receiver, id, request, count, answer,
+                       CDTP_MAX_PACKET_WORDS, &response_count) == 1);
+    CHECK(cdbs_sender_reply(&sender, id, answer, response_count) == 1);
+    CHECK(sender.retries == 0u && receiver.offset == 1u);
+    return 0;
+}
+
 int main(void)
 {
-    if (run()) return 1;
+    if (run() || test_opcode_bound_negative_reply()) return 1;
     puts("Session-bound 252-byte streaming and old-session replay isolation passed.");
     return 0;
 }
