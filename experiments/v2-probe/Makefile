@@ -35,3 +35,25 @@ $(OUT)/cubedeck-v2-probe.gba: $(OUT)/cubedeck-v2-probe-arm.elf
 
 clean:
 	rm -rf $(OUT)
+
+# Distinct opt-in multi-frame fixtures: never overwrite the cyan-verified probe.
+.PHONY: multiframe-gamecube multiframe-gba
+multiframe-gamecube: $(OUT)/cubedeck-v2-multiframe.dol
+multiframe-gba: $(OUT)/cubedeck-v2-multiframe.gba
+
+$(OUT)/cubedeck-v2-multiframe.elf: experiments/v2-probe/gamecube-multiframe.c $(PROTO) | $(OUT)
+	$(PPC) -O2 -Wall -Wextra -Wno-unused-parameter -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  $^ -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-multiframe.dol: $(OUT)/cubedeck-v2-multiframe.elf
+	$(ELF2DOL) $< $@
+
+$(OUT)/cubedeck-v2-multiframe-arm.elf: experiments/v2-probe/gba-multiframe.c $(PROTO) | $(OUT)
+	$(ARM) -O2 -Wall -Wextra -mthumb -mthumb-interwork \
+	  -I$(DEVKITPRO)/libgba/include -Iinclude -specs=gba.specs \
+	  $^ -L$(DEVKITPRO)/libgba/lib -lgba -o $@
+
+$(OUT)/cubedeck-v2-multiframe.gba: $(OUT)/cubedeck-v2-multiframe-arm.elf
+	$(ARMOBJ) -O binary $< $@
+	$(GBAFIX) $@ -tCDBK3FRAMES -cCDV3 -m01
