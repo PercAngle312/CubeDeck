@@ -10,8 +10,8 @@ endif
 
 TARGET  := cubedeck
 BUILD   := build
-SOURCES := src
-INCLUDES :=
+SOURCES := src protocol
+INCLUDES := -Iinclude
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 OFILES := $(CFILES:.c=.o)
