@@ -18,7 +18,7 @@ The GBA diagnostic is intended to run from your SuperCard/flashcart. CubeDeck do
 - Four-port GameCube controller monitor
 - GBA link cable detection on GameCube Port 2 using asynchronous SI device-type polling
 - Callback-driven Joybus RESET/STATUS and two-way diagnostic word exchange
-- One-round verification (X) and a 16-round sequential-word stress test (Y)
+- Framed-packet word-by-word smoke test (A), one-round verification (X), and a 16-round sequential-word stress test (Y)
 
 **Physical-hardware validation:** the diagnostic exchange works, and the maintainer confirmed **16/16 replies valid** in the sequential-word stress test. This is not yet bulk ROM transfer or TV playback.
 
