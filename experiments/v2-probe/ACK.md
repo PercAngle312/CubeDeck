@@ -89,9 +89,12 @@ belongs to the **existing installed ACK/NACK pair**, not to a later
 diagnostic build or any SD-card replacement. The user subsequently **explicitly confirmed 3/3 on GameCube and cyan on
 GBA** for that same successful restart/retry run. This verifies three
 packets completed the GBA's acceptance path in the ACK/NACK experiment.
-The GameCube's separate **Retries:** value was not reported, so whether
-the intentional packet-2 NACK actually caused a successful retransmission
-remains unconfirmed. Do not treat "3/3" as "Retries: 1".
+The user subsequently **explicitly confirmed that the same GameCube success
+screen showed `Retries: 1`**. Together with GBA cyan and 3/3, this
+user-observed hardware result validates the diagnostic's intended
+one-time packet-2 NACK and bounded GameCube retransmission on real consoles.
+This is a single successful test after a restart, not proof of repeatable
+cold-start reliability or reliable recovery from arbitrary dropped words.
 
 The earlier failure might be a transient startup / GBA Joybus state or
 timing problem, but the root cause has **not** been isolated. A cold restart
