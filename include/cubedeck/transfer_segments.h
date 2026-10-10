@@ -13,6 +13,7 @@ typedef struct {
     size_t image_size;
     size_t next_offset;
     uint32_t next_index;
+    uint16_t chunk_capacity;
 } cdseg_planner;
 
 typedef struct {
@@ -23,6 +24,10 @@ typedef struct {
 } cdseg_span;
 
 void cdseg_init(cdseg_planner *planner, size_t image_size);
+/* 0 success, -1 invalid chunk capacity/pointers. For transfer-ID packets,
+ * pass CDGU_MAX_PAYLOAD (252), not the legacy 256-byte size. */
+int cdseg_init_chunked(cdseg_planner *planner, size_t image_size,
+                       uint16_t chunk_capacity);
 /* 1 = span available; 0 = no spans left; -1 = invalid pointers/state. */
 int cdseg_next(cdseg_planner *planner, cdseg_span *span);
 #endif
