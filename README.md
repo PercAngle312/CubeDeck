@@ -31,12 +31,13 @@ The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It s
 1. Confirm the Actions workflow succeeds and both artifacts are present.
 2. Keep a copy of the last known-good `.dol` and `.gba`.
 3. Launch the GameCube artifact from Swiss and run the GBA diagnostic from the flashcart.
-4. Open the GBA link page and press X for one round or Y for the 16-round stress test.
+4. Open the GBA link page and press A for the framed-packet word smoke test, X for one round, or Y for the 16-round stress test.
+5. The A test checks the reply to each encoded word; the GBA side still uses its simple XOR responder and does not parse the packet.
 
 ## Roadmap
 
-1. A portable packet framing v1 has been added and host-tested in CI; it is not yet connected to the running GameCube/GBA code.
-2. Prove byte-for-byte transfer of a small test payload on real hardware.
+1. Portable packet framing v1 is host-tested and now used by the GameCube A-button smoke test. The GBA diagnostic still acknowledges each word with XOR rather than parsing the packet.
+2. Add GBA-side packet parsing and verify a payload byte-for-byte on real hardware.
 3. Evaluate established GBA Link Cable Dumper code/workflow for reading retail cartridges; keep SuperCard SD-file access as a separate question.
 4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
 5. Investigate save access separately, starting read-only and protecting existing saves.
