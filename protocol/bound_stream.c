@@ -69,6 +69,11 @@ int cdbs_receive(cdst_receiver *receiver, uint32_t session_id,
     result = cdstw_receive_decoded(receiver, &plain, &reply);
     if (result < 0)
         return -1;
+    /* Bind negative replies to the rejected request's opcode as well as\n     * the sequence, avoiding stale MANIFEST NACKs affecting DATA(0). */
+    if (reply.opcode == CDRL_OP_NACK) {
+        reply.payload_length = 1u;
+        reply.payload[0] = plain.opcode;
+    }
     if (pack(&reply, session_id, response, capacity, response_count) != 0)
         return -1;
     return 1;
@@ -84,5 +89,13 @@ int cdbs_sender_reply(cdtx_sender *sender, uint32_t session_id,
     if (cdgu_decode(words, count, session_id, &reply) != 0)
         return 0;
     unpack(&reply, &plain);
+    if (plain.opcode == CDRL_OP_NACK) {
+        if (!sender->pending_valid || plain.payload_length != 1u ||
+            plain.payload[0] != sender->pending.opcode)
+            return 0;
+        /* Legacy sender expects a zero-length NACK. Only a verified,
+         * matching transfer-ID/opcode reply is adapted to that format. */
+        plain.payload_length = 0u;
+    }
     return cdtx_reply(sender, &plain);
 }
