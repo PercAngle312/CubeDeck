@@ -65,16 +65,20 @@ static void draw_controller(void)
     PADStatus pad[4];
     PAD_Read(pad);
     draw_header();
-    printf("\x1b[5;2HCONTROLLER TEST\n");
-    printf("\x1b[7;2HPort 1 status : %s\n", pad[0].err == PAD_ERR_NONE ? "Connected" : "Not connected / no data");
-    printf("\x1b[8;2HStick X      : %4d\n", pad[0].stickX);
-    printf("\x1b[9;2HStick Y      : %4d\n", pad[0].stickY);
-    printf("\x1b[10;2HC-stick X    : %4d\n", pad[0].substickX);
-    printf("\x1b[11;2HC-stick Y    : %4d\n", pad[0].substickY);
-    printf("\x1b[12;2HTrigger L    : %4d\n", pad[0].triggerL);
-    printf("\x1b[13;2HTrigger R    : %4d\n", pad[0].triggerR);
-    printf("\x1b[15;2HButtons: %04X\n", pad[0].button);
-    printf("\x1b[21;2HB: Back to main menu\n");
+    printf("\x1b[5;2HCONTROLLER PORT MONITOR\n");
+    printf("\x1b[7;2HPort       Status       Buttons\n");
+
+    for (int i = 0; i < 4; ++i) {
+        const char *status = pad[i].err == PAD_ERR_NONE ? "Connected" : "No controller";
+        int row = 8 + i * 3;
+        printf("\x1b[%d;2HPort %d:   %-13s %04X", row, i + 1, status, pad[i].button);
+        printf("\x1b[%d;4HStick X/Y: %4d / %4d    C-stick: %4d / %4d",
+               row + 1, pad[i].stickX, pad[i].stickY,
+               pad[i].substickX, pad[i].substickY);
+    }
+
+    printf("\x1b[21;2HConnect pads to any port to monitor input.");
+    printf("\x1b[22;2HB: Back to main menu");
 }
 
 static void draw_about(void)
