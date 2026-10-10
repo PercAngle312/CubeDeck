@@ -414,7 +414,7 @@ jobs:
                       protocol/stream_wire.c protocol/session_guard.c \
                       protocol/bound_stream.c protocol/stream_hash.c \
                       protocol/transfer_segments.c; do
-            powerpc-eabi-gcc -std=c11 -Wall -Wextra -Werror -Iinclude \
+            "$DEVKITPRO/devkitPPC/bin/powerpc-eabi-gcc" -std=c11 -Wall -Wextra -Werror -Iinclude \
               -O1 -c "$file" -o "/tmp/cd-ppc-objects/$(basename "$file" .c).o"
           done
 
@@ -437,7 +437,7 @@ jobs:
                       protocol/stream_wire.c protocol/session_guard.c \
                       protocol/bound_stream.c protocol/stream_hash.c \
                       protocol/transfer_segments.c; do
-            arm-none-eabi-gcc -std=c11 -Wall -Wextra -Werror -Iinclude \
+            "$DEVKITPRO/devkitARM/bin/arm-none-eabi-gcc" -std=c11 -Wall -Wextra -Werror -Iinclude \
               -O1 -mcpu=arm7tdmi -mthumb -c "$file" \
               -o "/tmp/cd-arm-objects/$(basename "$file" .c).o"
           done
