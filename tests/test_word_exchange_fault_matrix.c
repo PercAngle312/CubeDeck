@@ -61,6 +61,19 @@ static int single_case(unsigned mode)
         int phase = sender.phase;
         unsigned reads = f.reads;
         CHECK(++frames < 20u);
+        if (mode == 3u && !fault_done && phase == CDTX_DATA &&
+            sender.next_sequence == 1u) {
+            /* The SI driver transmits two words, then reports timeout.
+             * Retry must restart at the original frame magic word. */
+            CHECK(cdwx_next_word(&link, &word) == 1);
+            CHECK(word == CDTP_MAGIC);
+            CHECK(cdwx_next_word(&link, &word) == 1);
+            CHECK(cdwx_timeout(&link) == 0);
+            CHECK(sender.retries == 1u && f.reads == reads);
+            CHECK(link.phase == CDWX_SENDING && link.next_word == 0u);
+            fault_done = 1u;
+            continue;
+        }
         while (cdwx_next_word(&link, &word) == 1) {
             CHECK(emitted < CDTP_MAX_PACKET_WORDS);
             request[emitted++] = word;
@@ -96,10 +109,6 @@ static int single_case(unsigned mode)
                 /* Only a prefix arrives, then the link times out. */
                 for (i = 0u; i < 2u; ++i)
                     CHECK(cdwx_reply_word(&link, reply[i]) == 0);
-                CHECK(cdwx_timeout(&link) == 0);
-            } else if (mode == 3u) {
-                /* Interrupted outgoing transfer: a driver timeout
-                 * can replay a cached pending frame. */
                 CHECK(cdwx_timeout(&link) == 0);
             }
             CHECK(link.phase == CDWX_SENDING);
