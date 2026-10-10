@@ -30,7 +30,9 @@ The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It s
 
 The shared C protocol modules now support packet CRC32, sequence checking, idempotent retries, manifest-first sessions, and complete-image checksums. A newer **RAM-light callback-based sender and receiver** are tested in CI with a **131,077-byte** simulated transfer, including corrupted frames, dropped ACKs, read failures, sink failures, and stale acknowledgments. Streaming ACKs identify both packet opcode and sequence to distinguish MANIFEST from DATA(0).
 
-**These large-transfer capabilities are software simulations only.** They are **not wired into the GameCube or GBA runtime**, and no ROM playback or cartridge dumping is implemented. A source-code guard rejects selected direct storage-write APIs; this cannot guarantee Swiss or firmware never writes storage.
+The newer experimental v2 protocol binds packets and ACKs to explicit transfer IDs, uses 252-byte DATA frames, and includes a nonblocking word-by-word send/reply scheduler. That scheduler is simulated with lost acknowledgments, corrupted replies and bounded retries. The host-tested portable protocol also cross-compiles independently to GameCube PowerPC and GBA ARM object files.
+
+**These large-transfer capabilities are software simulations only.** They are **not wired into the GameCube or GBA runtime**, and no ROM playback or cartridge dumping is implemented. See [v2 integration readiness](docs/v2-integration-readiness.md) and [word exchange prototype](docs/word-exchange-prototype.md) for details. A source-code guard rejects selected direct storage-write APIs; this cannot guarantee Swiss or firmware never writes storage.
 
 ## Hardware validation
 
