@@ -85,6 +85,11 @@ cdvs_result cdvs_receive(cdvs_receiver *receiver, const cdtp_packet *packet)
     }
     if (packet->opcode != CDCS_OP_DATA || receiver->verified)
         return CDVS_ERR_STATE;
+    if (packet->payload_length != 0u && receiver->chunks.has_last &&
+        packet->sequence == receiver->chunks.last_sequence) {
+        chunk_status = cdcs_receive(&receiver->chunks, packet);
+        return chunk_status == CDCS_DUPLICATE ? CDVS_DUPLICATE : CDVS_ERR_SEQUENCE;
+    }
     if (packet->payload_length == 0u ||
         packet->payload_length > receiver->manifest.expected_bytes ||
         receiver->chunks.length >
