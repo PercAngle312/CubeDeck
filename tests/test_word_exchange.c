@@ -195,9 +195,31 @@ static int test_nack_retransmit(void)
     return 0;
 }
 
+static int test_invalid_sender_modes(void)
+{
+    mock m;
+    cdtx_sender sender;
+    cdwx_link link;
+    cdtp_packet pending;
+    memset(&m, 0, sizeof(m));
+    CHECK(cdtx_init(&sender, read_source, &m, 0u, 0u) == 0);
+    CHECK(cdwx_init(&link, &sender, 7u) == -1);
+    CHECK(sender.phase == CDTX_MANIFEST && !sender.pending_valid);
+    CHECK(cdbs_init_sender(&sender, read_source, &m, 0u, 0u) == 0);
+    CHECK(cdwx_init(&link, &sender, 0u) == -1);
+    CHECK(cdtx_next(&sender, &pending) == 1);
+    CHECK(cdwx_init(&link, &sender, 7u) == -1);
+    CHECK(sender.pending_valid && sender.phase == CDTX_MANIFEST);
+    CHECK(cdbs_init_sender(&sender, read_source, &m, 0u, 0u) == 0);
+    CHECK(cdwx_init(&link, &sender, 7u) == 0);
+    CHECK(cdwx_init(&link, &sender, 7u) == -1);
+    return 0;
+}
+
 int main(void)
 {
-    if (run() || test_retry_exhaustion() || test_nack_retransmit())
+    if (run() || test_retry_exhaustion() || test_nack_retransmit() ||
+        test_invalid_sender_modes())
         return 1;
     puts("Nonblocking session-bound Joybus word scheduler simulation passed.");
     return 0;
