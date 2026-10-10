@@ -17,7 +17,14 @@ int cdstw_receive_decoded(cdst_receiver *receiver,
     result = cdst_receive(receiver, packet);
     if (result == CDST_ACCEPTED || result == CDST_DUPLICATE ||
         result == CDST_VERIFIED)
-        return reply_for(CDRL_OP_ACK, packet->sequence, reply);
+        {
+            int ack = reply_for(CDRL_OP_ACK, packet->sequence, reply);
+            if (ack == 1) {
+                reply->payload_length = 1u;
+                reply->payload[0] = packet->opcode;
+            }
+            return ack;
+        }
     /* At maximum sequence 65535, only FINISH may be expected. */
     return reply_for(CDRL_OP_NACK,
                      (uint16_t)receiver->next_sequence, reply);
