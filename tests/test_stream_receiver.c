@@ -51,6 +51,7 @@ static int test_large_stream(void)
         source[i] = (uint8_t)(i * 31u + (i >> 4u));
     memset(&sink, 0, sizeof(sink));
     cdst_init(&receiver, store, &sink);
+    memset(&p, 0, sizeof(p));
     CHECK(cdst_receive(&receiver, &p) == CDST_ERR_STATE);
     manifest(&p, IMAGE_LENGTH, cdim_crc32(source, IMAGE_LENGTH));
     CHECK(cdst_receive(&receiver, &p) == CDST_ACCEPTED);
