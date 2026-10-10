@@ -132,9 +132,58 @@ static int test_retry_exhaustion(void)
     return 0;
 }
 
+static int test_nack_retransmit(void)
+{
+    mock m;
+    cdtx_sender sender;
+    cdwx_link link;
+    uint32_t words[CDTP_MAX_PACKET_WORDS];
+    uint32_t initial[CDTP_MAX_PACKET_WORDS];
+    uint32_t word;
+    cdgu_message reply;
+    size_t count, emitted = 0u, i;
+    const uint32_t id = 0xA1249865u;
+    memset(&m, 0, sizeof(m));
+    CHECK(cdbs_init_sender(&sender, read_source, &m, 0u, 0u) == 0);
+    CHECK(cdwx_init(&link, &sender, id) == 0);
+    while (cdwx_next_word(&link, &word) == 1) {
+        CHECK(emitted < CDTP_MAX_PACKET_WORDS);
+        initial[emitted++] = word;
+    }
+    CHECK(link.phase == CDWX_WAIT_REPLY);
+    memset(&reply, 0, sizeof(reply));
+    reply.session_id = id + 1u;
+    reply.opcode = CDRL_OP_NACK;
+    CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    for (i = 0u; i < count; ++i)
+        CHECK(cdwx_reply_word(&link, words[i]) == 0);
+    CHECK(link.phase == CDWX_WAIT_REPLY && sender.retries == 0u);
+    reply.session_id = id;
+    CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    for (i = 0u; i < count; ++i)
+        CHECK(cdwx_reply_word(&link, words[i]) == 0);
+    CHECK(link.phase == CDWX_SENDING && sender.retries == 1u);
+    for (i = 0u; i < emitted; ++i) {
+        CHECK(cdwx_next_word(&link, &word) == 1);
+        CHECK(word == initial[i]);
+    }
+    CHECK(link.phase == CDWX_WAIT_REPLY);
+    /* ACK the retried manifest; FINISH is the next phase. */
+    reply.opcode = CDRL_OP_ACK;
+    reply.payload_length = 1u;
+    reply.payload[0] = CDVS_OP_MANIFEST;
+    CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    for (i = 0u; i < count; ++i) {
+        int status = cdwx_reply_word(&link, words[i]);
+        CHECK(status == (i + 1u == count ? 1 : 0));
+    }
+    CHECK(link.phase == CDWX_SENDING && sender.retries == 0u);
+    return 0;
+}
+
 int main(void)
 {
-    if (run() || test_retry_exhaustion())
+    if (run() || test_retry_exhaustion() || test_nack_retransmit())
         return 1;
     puts("Nonblocking session-bound Joybus word scheduler simulation passed.");
     return 0;
