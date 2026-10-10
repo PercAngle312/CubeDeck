@@ -124,9 +124,39 @@ static int test_fail_closed(void)
     return 0;
 }
 
+static int test_last_sequence_boundary(void)
+{
+    cdst_receiver receiver;
+    memory_sink sink;
+    cdtp_packet frame;
+    uint8_t last_byte = 0xB7u;
+    memset(&sink, 0, sizeof(sink));
+    cdst_init(&receiver, store, &sink);
+    manifest(&frame, 1u, cdim_crc32(&last_byte, 1u));
+    CHECK(cdst_receive(&receiver, &frame) == CDST_ACCEPTED);
+    /* Artificially jump to the last DATA sequence to test boundary logic. */
+    receiver.next_sequence = CDST_MAX_CHUNKS - 1u;
+    memset(&frame, 0, sizeof(frame));
+    frame.opcode = CDCS_OP_DATA;
+    frame.sequence = (uint16_t)receiver.next_sequence;
+    frame.payload_length = 1u;
+    frame.payload[0] = last_byte;
+    CHECK(cdst_receive(&receiver, &frame) == CDST_ACCEPTED);
+    CHECK(receiver.next_sequence == CDST_MAX_CHUNKS);
+    CHECK(cdst_receive(&receiver, &frame) == CDST_DUPLICATE);
+    frame.sequence = 0u;
+    CHECK(cdst_receive(&receiver, &frame) == CDST_ERR_SEQUENCE);
+    memset(&frame, 0, sizeof(frame));
+    frame.opcode = CDVS_OP_FINISH;
+    frame.sequence = (uint16_t)CDST_MAX_CHUNKS;
+    CHECK(cdst_receive(&receiver, &frame) == CDST_VERIFIED);
+    return 0;
+}
+
 int main(void)
 {
-    if (test_large_stream() || test_fail_closed())
+    if (test_large_stream() || test_fail_closed() ||
+        test_last_sequence_boundary())
         return 1;
     puts("RAM-light 32 KiB stream receiver and failure cases passed.");
     return 0;
