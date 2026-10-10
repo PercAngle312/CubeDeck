@@ -35,7 +35,7 @@ The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It s
 
 ## Roadmap
 
-1. Design and host-test framed packets, sequencing, checksums, acknowledgements, retries, and cancellation.
+1. A portable packet framing v1 has been added and host-tested in CI; it is not yet connected to the running GameCube/GBA code.
 2. Prove byte-for-byte transfer of a small test payload on real hardware.
 3. Evaluate established GBA Link Cable Dumper code/workflow for reading retail cartridges; keep SuperCard SD-file access as a separate question.
 4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
