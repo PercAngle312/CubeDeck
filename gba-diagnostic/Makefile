@@ -12,7 +12,7 @@ OBJCOPY := $(DEVKITARM)/bin/arm-none-eabi-objcopy
 GBAFIX := $(DEVKITPRO)/tools/bin/gbafix
 # libgba is installed separately from devkitARM, so specify both its headers
 # and library. Keep gba.specs to configure the GBA startup/runtime.
-CFLAGS := -O2 -Wall -Wextra -mthumb -mthumb-interwork -I$(DEVKITPRO)/libgba/include -specs=gba.specs
+CFLAGS := -O2 -Wall -Wextra -mthumb -mthumb-interwork -I$(DEVKITPRO)/libgba/include -I../include -specs=gba.specs
 LDFLAGS := -L$(DEVKITPRO)/libgba/lib
 LDLIBS := -lgba
 
@@ -26,8 +26,8 @@ check-tools:
 	@test -f "$(DEVKITPRO)/libgba/include/gba.h" || (echo "Missing libgba header: $(DEVKITPRO)/libgba/include/gba.h"; exit 1)
 	@test -f "$(DEVKITPRO)/libgba/lib/libgba.a" || (echo "Missing libgba library: $(DEVKITPRO)/libgba/lib/libgba.a"; exit 1)
 
-$(TARGET).elf: main.c
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
+$(TARGET).elf: main.c ../protocol/transport_protocol.c ../include/cubedeck/transport_protocol.h
+	$(CC) $(CFLAGS) main.c ../protocol/transport_protocol.c $(LDFLAGS) $(LDLIBS) -o $@
 
 $(TARGET).gba: $(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
