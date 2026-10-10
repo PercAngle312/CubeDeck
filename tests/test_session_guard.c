@@ -56,6 +56,33 @@ static int roundtrip_all_sizes(void)
     return 0;
 }
 
+static int legacy_frame_rejection(void)
+{
+    cdtp_packet legacy;
+    cdgu_message parsed;
+    uint32_t words[CDTP_MAX_PACKET_WORDS];
+    size_t count;
+    memset(&legacy, 0, sizeof(legacy));
+    legacy.opcode = 0x20u;
+    legacy.sequence = 0u;
+    legacy.payload_length = 8u;
+    legacy.payload[0] = 0x21u;
+    legacy.payload[1] = 0xC3u;
+    legacy.payload[2] = 0x9Au;
+    legacy.payload[3] = 0xF1u;
+    CHECK(cdtp_encode(&legacy, words, CDTP_MAX_PACKET_WORDS, &count)
+          == CDTP_OK);
+    /* Even a legacy packet whose initial payload happens to match the
+     * session ID must not be treated as a v2 transfer. */
+    CHECK(cdgu_decode(words, count, 0xF19AC321u, &parsed) == -2);
+    memset(&parsed, 0, sizeof(parsed));
+    parsed.session_id = 1u;
+    parsed.opcode = 0x80u;
+    CHECK(cdgu_encode(&parsed, words, CDTP_MAX_PACKET_WORDS,
+                      &count) == -1);
+    return 0;
+}
+
 static int stale_session_replay(void)
 {
     cdgu_message request, ack, received, previous;
@@ -94,7 +121,8 @@ static int stale_session_replay(void)
 
 int main(void)
 {
-    if (roundtrip_all_sizes() || stale_session_replay())
+    if (roundtrip_all_sizes() || stale_session_replay() ||
+        legacy_frame_rejection())
         return 1;
     puts("Session-bound wire IDs, stale replay rejection and 253 payload sizes passed.");
     return 0;
