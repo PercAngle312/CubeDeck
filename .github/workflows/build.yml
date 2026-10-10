@@ -344,3 +344,17 @@ jobs:
             protocol/transport_protocol.c \
             tests/test_stream_max_window.c -o /tmp/test-max-window
           /tmp/test-max-window
+
+  test-session-guard:
+    name: Test session-bound ACK and replay isolation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and validate v2 packet envelope
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/session_guard.c \
+            tests/test_session_guard.c -o /tmp/test-session-guard
+          /tmp/test-session-guard
