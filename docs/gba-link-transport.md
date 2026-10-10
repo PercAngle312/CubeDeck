@@ -1,60 +1,52 @@
 # CubeDeck GBA Link Transport — Design Notes
 
-Status: **design only; no working GameCube/GBA link implementation is included yet.**
+Status: **research/design only; CubeDeck does not yet contain a working GameCube↔GBA transport implementation.**
 
-This document defines the first safe milestone: prove a repeatable bidirectional exchange before attempting ROM transfer, save access, or gameplay.
+## Confirmed hardware path
 
-## Physical interface gate
+The relevant interface is the Nintendo GameCube-to-Game Boy Advance link cable (commonly DOL-011 or a compatible cable). It connects the GBA to the GameCube Serial Interface (SI) bus through a GameCube controller port. Open-source projects demonstrate that GameCube homebrew can use this connection to upload a small GBA multiboot program and then exchange Joybus commands with that running program.
 
-A normal GBA-to-GBA link cable has GBA plugs on both ends; it does not plug directly into a GameCube controller port. A GameCube needs a Game Boy Advance link cable (the GameCube-side connector/adapter) or a documented custom electrical interface. Do not wire the GBA serial pins directly to a GameCube port based only on pin names. Confirm the exact cable/adapter and protocol before writing hardware-specific code.
+Useful prior art:
+- [FIX94/gba-link-cable-rom-sender](https://github.com/FIX94/gba-link-cable-rom-sender) — GameCube/Wii homebrew that sends small multiboot GBA ROMs through the cable.
+- [afska/gba-link-connection](https://github.com/afska/gba-link-connection) — GBA-side library with a Joybus/LinkCube implementation for communicating with GameCube or Wii.
+- [joypad-ai/joypad-os GBA link notes](https://github.com/joypad-ai/joypad-os/blob/main/docs/output/gba-link-cable.md) — documents the DOL-011 SI connection, multiboot upload, and Joybus command exchange.
 
-The SuperCard occupies the GBA cartridge slot. That means the GBA cannot simultaneously hold a retail cartridge while the SuperCard is installed. A ROM stored on the SuperCard SD card is not automatically visible to the GameCube over the link cable.
+These are reference projects, not code already integrated into CubeDeck. Before implementation, inspect their licensing and interfaces and adapt only what is needed.
 
-## Milestone 1: harmless link probe
+## Important constraints
 
-The first probe should exchange a small fixed test frame only. It must not write cartridge saves, erase data, or attempt to dump a ROM.
+- The classic GameCube↔GBA cable is a Joybus/SI connection, not the normal GBA multiplayer serial protocol. The two protocols must not be confused.
+- A GameCube can upload a multiboot payload to the GBA's RAM, but the multiboot payload is small (roughly 16 KiB for the documented path). That is enough for a diagnostic client, not a full GBA emulator.
+- Once a GBA-side payload is running, Joybus exchanges use small command/response transfers (4-byte reads/writes in the documented implementation). Bulk data transfer will need chunking, pacing, acknowledgements, and timeout recovery.
+- The SuperCard occupies the GBA cartridge slot. The GBA cannot read a retail cartridge while the SuperCard is inserted. A ROM on the SuperCard SD is not automatically visible to the GameCube over the cable.
+- No direct cartridge-save writing should be attempted in the link-probe milestone.
 
-The probe is considered successful only when:
-- the GBA program starts reliably;
-- the GameCube receiver detects the expected interface state;
-- a known test payload is received correctly more than once;
-- invalid frames and timeouts are reported rather than hanging the dashboard;
-- unplugging/reconnecting the cable does not crash either side.
+## First implementation milestone
 
-## Proposed logical frame
+Start with a harmless diagnostic payload. The GameCube should:
+1. Detect/initialize the link interface using a known-good Joybus/SI implementation.
+2. Upload or otherwise start the tiny GBA-side diagnostic client.
+3. Exchange a fixed test value and a monotonically increasing counter.
+4. Verify returned values, count failures, and show connection/timeout status in CubeDeck.
+5. Recover cleanly from a disconnected cable and never block the menu indefinitely.
 
-This is an application-level proposal, not a claim about the electrical link protocol. The transport adapter must serialize these fields using the confirmed hardware protocol.
+The GBA diagnostic client should:
+- enter Joybus mode correctly;
+- answer a simple status/read/write exchange;
+- return a signature and counter that the GameCube can verify;
+- avoid touching cartridge save memory.
 
-| Field | Size | Purpose |
-| --- | ---: | --- |
-| Magic | 4 bytes | ASCII `CDLK` |
-| Version | 1 byte | Protocol version, initially 1 |
-| Type | 1 byte | HELLO, HELLO_ACK, PING, PONG, DATA, ACK, ERROR |
-| Sequence | 2 bytes | Wraparound packet sequence |
-| Length | 2 bytes | Payload length, bounded by implementation |
-| Payload | 0–128 bytes | Test data in the first milestone |
-| Checksum | 2 bytes | CRC-16 over header and payload |
+## Later milestones
 
-All multi-byte fields should use a single documented byte order. The receiver must reject an unknown version, excessive length, invalid checksum, and unexpected sequence number.
+1. **Link proof:** repeatable Joybus command/response on real hardware or a trusted emulator.
+2. **Chunked transport:** bounded payload chunks with sequence numbers, checksums, acknowledgements, retries, and cancellation.
+3. **Cartridge reader research:** a separate GBA-side program that reads the inserted cartridge ROM safely and streams it to the GameCube. This requires the retail cartridge to be in the GBA slot; it cannot be done while the SuperCard is occupying that slot.
+4. **Save support:** begin read-only and identify save type before any write path; preserve backups and never claim generic save writing without per-type validation.
+5. **Emulation:** only after ROM transfer and integrity checks are proven. Real-time emulation on GameCube is a separate large engineering task.
 
-## Reliability rules
+## Build and validation policy
 
-- Use a bounded timeout for every handshake and packet.
-- Retry only a small, fixed number of times; then return an error to the UI.
-- Acknowledge accepted frames and do not silently treat a timeout as success.
-- Keep the UI responsive while waiting for link events.
-- Use fixed-size buffers for the initial implementation.
-- Never write to cartridge SRAM/Flash/EEPROM during the link-probe milestone.
-
-## Implementation sequence
-
-1. Identify the actual cable/adapter and supported GameCube-side serial interface.
-2. Build a GBA probe ROM that can be launched from the user's available homebrew setup.
-3. Implement the matching GameCube-side receive/transmit primitive.
-4. Verify HELLO/PING/PONG with sequence numbers, checksums, retries, and disconnect handling.
-5. Only after the probe is stable, design chunked ROM transfer and validate data integrity independently.
-6. Treat save reading/writing as a separate project with backup and read-only-first tests.
-
-## Current repository state
-
-CubeDeck's existing GameCube DOL is a menu/controller diagnostic shell. This document is planning only; it does not add GBA communication or cartridge access. A cloud build and physical-hardware test are required for every new executable milestone.
+- Keep the known-working CubeDeck video initialization untouched unless a specific defect requires changing it.
+- Build GameCube and GBA components as separate targets with explicit toolchains.
+- A successful cloud compile is not proof of cable communication; validate the link protocol independently.
+- Do not describe a feature as supported until it has been built and tested.
