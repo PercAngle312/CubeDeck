@@ -358,3 +358,21 @@ jobs:
             protocol/transport_protocol.c protocol/session_guard.c \
             tests/test_session_guard.c -o /tmp/test-session-guard
           /tmp/test-session-guard
+
+  test-bound-stream:
+    name: Test session-bound streaming and stale replay
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and test transfer-ID framed sender and receiver
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c protocol/image_integrity.c \
+            protocol/stream_receiver.c protocol/stream_sender.c \
+            protocol/stream_wire.c protocol/session_guard.c \
+            protocol/bound_stream.c tests/test_bound_stream.c \
+            -o /tmp/test-bound-stream
+          /tmp/test-bound-stream
