@@ -52,6 +52,8 @@ static void test_payload_round_trip(void)
     CHECK(count == 6u);
     CHECK(words[3] == 0x33221100u);
     CHECK(words[4] == 0x00BADCFEu);
+    /* Independent IEEE CRC-32 test vector for this exact packet. */
+    CHECK(words[5] == 0x576024EAu);
     CHECK(cdtp_decode(words, count, &output) == CDTP_OK);
     CHECK(output.opcode == input.opcode);
     CHECK(output.sequence == input.sequence);
@@ -103,6 +105,12 @@ static void test_rejects_corruption_and_bad_shape(void)
     words[3] ^= 1u;
     CHECK(cdtp_decode(words, count - 1u, &output) == CDTP_ERR_FORMAT);
     CHECK(cdtp_decode(words, count + 1u, &output) == CDTP_ERR_FORMAT);
+
+    /* Nonzero bytes after the declared payload are not canonical padding. */
+    words[3] = 0x04030201u;
+    words[3] |= 0xAA000000u;
+    CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
+    words[3] = 0x04030201u;
 
     words[0] = 0u;
     CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
