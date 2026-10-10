@@ -180,7 +180,10 @@ static void draw_link(void)
     printf("\x1b[11;2HReported SI device type: 0x%08lX\n", (unsigned long)link_type_value);
     switch (joybus_stage) {
         case 0:
-            printf("\x1b[13;2HPress X to run Joybus RESET then STATUS.\n");
+            if (link_status == 2)
+                printf("\x1b[13;2HPress X to run Joybus RESET then STATUS.\n");
+            else
+                printf("\x1b[13;2HX probe unlocks after GBA detection succeeds.\n");
             break;
         case 1:
             printf("\x1b[13;2HJoybus probe: waiting for RESET response...\n");
