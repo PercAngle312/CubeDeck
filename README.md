@@ -20,22 +20,25 @@ The GBA diagnostic is intended to run from your SuperCard/flashcart. CubeDeck do
 - Callback-driven Joybus RESET/STATUS and two-way diagnostic word exchange
 - One-round verification (X) and a 16-round sequential-word stress test (Y)
 
-The diagnostic exchange is verified on physical hardware. This sends only test words and XOR replies; ROM streaming and save access are not implemented.
+**Physical-hardware validation:** the diagnostic exchange works, and the maintainer confirmed **16/16 replies valid** in the sequential-word stress test. This is not yet bulk ROM transfer or TV playback.
 
 ## GBA diagnostic payload
 
-The separate `gba-diagnostic/` target is an experimental first GBA-side client. It switches the GBA link port into Joybus mode, enables serial interrupts, prepares a fixed signature response, and changes its screen color when it receives data. It does not read or write cartridge ROM/save memory.
-
-The source and cloud build target are committed and compile in CI. The maintainer has confirmed the real-cable test on hardware: the GBA screen changes color and the GameCube receives the expected XOR reply. The GBA diagnostic does not read cartridge ROM or save memory.
+The separate `gba-diagnostic/` target is an experimental GBA-side test ROM. It switches the GBA link port into Joybus mode, prepares a deterministic XOR reply, and changes its screen color when it receives data. It does not read or write cartridge ROM or save memory.
 
 ## Hardware validation
 
 1. Confirm the Actions workflow succeeds and both artifacts are present.
-2. Keep a copy of the last known-good `cubedeck.dol`.
-3. Launch the new GameCube artifact from Swiss and confirm the dashboard still boots.
-4. Run `cubedeck-gba-diagnostic.gba` from the GBA flashcart while the cable is connected to GameCube Port 2.
-5. Open the GBA link page. Press X for one diagnostic round, or Y for a 16-round sequential-word stress test.
+2. Keep a copy of the last known-good `.dol` and `.gba`.
+3. Launch the GameCube artifact from Swiss and run the GBA diagnostic from the flashcart.
+4. Open the GBA link page and press X for one round or Y for the 16-round stress test.
 
-## Safety and roadmap
+## Roadmap
 
-CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. Next, add a bounded GameCube Joybus test command path with callback-based completion and timeouts, then verify the signature/counter round-trip. Cartridge reading and save access remain later, separately validated milestones. See [docs/gba-link-transport.md](docs/gba-link-transport.md).
+1. Design and host-test framed packets, sequencing, checksums, acknowledgements, retries, and cancellation.
+2. Prove byte-for-byte transfer of a small test payload on real hardware.
+3. Evaluate established GBA Link Cable Dumper code/workflow for reading retail cartridges; keep SuperCard SD-file access as a separate question.
+4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
+5. Investigate save access separately, starting read-only and protecting existing saves.
+
+CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. See [docs/gba-link-transport.md](docs/gba-link-transport.md) for transport details and validation rules.
