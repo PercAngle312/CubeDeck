@@ -568,3 +568,17 @@ jobs:
         with:
           name: cubedeck-v2-multiframe-gba
           path: experiments/v2-probe/out/cubedeck-v2-multiframe.gba
+
+  test-v2-multiframe-contract:
+    name: Test ordered three-frame v2 Joybus sample contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Check sequence, duplicates, CRC and payload corruption
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/session_guard.c \
+            tests/test_v2_multiframe_contract.c -o /tmp/test-v2-multiframe
+          /tmp/test-v2-multiframe
