@@ -34,7 +34,7 @@ The source and cloud build target are committed and compile in CI. The maintaine
 2. Keep a copy of the last known-good `cubedeck.dol`.
 3. Launch the new GameCube artifact from Swiss and confirm the dashboard still boots.
 4. Run `cubedeck-gba-diagnostic.gba` from the GBA flashcart while the cable is connected to GameCube Port 2.
-5. At this stage, the GameCube app only detects the GBA; it does not yet send diagnostic words.
+5. Open the GBA link page. Press X for one diagnostic round, or Y for a 16-round sequential-word stress test.
 
 ## Safety and roadmap
 
