@@ -76,3 +76,17 @@ jobs:
             protocol/transport_protocol.c protocol/chunk_session.c \
             tests/test_chunk_session.c -o /tmp/test-chunk-session
           /tmp/test-chunk-session
+
+  test-reliable-link:
+    name: Test reliable transfer and recovery
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and run stop-and-wait simulation
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c tests/test_reliable_link.c \
+            -o /tmp/test-reliable-link
+          /tmp/test-reliable-link
