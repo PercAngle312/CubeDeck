@@ -160,3 +160,19 @@ jobs:
             protocol/transport_protocol.c protocol/packet_stream.c \
             tests/test_packet_stream.c -o /tmp/test-packet-stream
           /tmp/test-packet-stream
+
+  test-session-sender:
+    name: Simulate complete manifest-to-finish transfers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and run complete transfer simulations
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c protocol/image_integrity.c \
+            protocol/verified_session.c protocol/session_wire.c \
+            protocol/session_sender.c tests/test_session_sender.c \
+            -o /tmp/test-session-sender
+          /tmp/test-session-sender
