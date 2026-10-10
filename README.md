@@ -4,42 +4,42 @@ CubeDeck is a conservative first-stage Nintendo GameCube homebrew utility dashbo
 
 ## Cloud build (recommended)
 
-1. Put this project in a GitHub repository using the GitHub website (or upload the ZIP and push it with any existing workflow you already use).
-2. Open the repository's **Actions** tab.
-3. Select **Build CubeDeck** and press **Run workflow**, or push a commit to trigger it automatically.
-4. Open the completed workflow run and download the `cubedeck-gamecube` artifact.
-5. Extract the artifact and copy `cubedeck.dol` to your SD card for launch through Swiss.
+1. Open the repository's **Actions** tab.
+2. Select **Build CubeDeck** and press **Run workflow**, or let a push trigger it automatically.
+3. Open the completed workflow run and download the `cubedeck-gamecube` artifact.
+4. Extract the artifact and copy `cubedeck.dol` to your SD card for launch through Swiss.
 
-The workflow uses the official `devkitpro/devkitppc` container, which includes the GameCube toolchain and development libraries. No local compiler installation is required. If the cloud build fails, use the workflow log as the source of truth; do not test a missing or incomplete artifact on hardware.
+The workflow uses the `devkitpro/devkitppc` container. If the cloud build fails, use the workflow log as the source of truth; do not test a missing or incomplete artifact on hardware.
 
 ## Current features
 
 - Video initialization using libogc's preferred video mode
-- Text console UI
-- GameCube controller navigation (D-pad, A, B)
-- System information page
-- Live controller input test
-- About page
+- Text console UI and GameCube controller navigation (D-pad, A, B)
+- System information and About pages
 - Four-port GameCube controller monitor (connection status, buttons, sticks)
+- **GBA link cable detection check** on GameCube controller Port 2 using asynchronous SI device-type polling
+
+The GBA link page is only a device-presence check. It does **not** yet upload a GBA program, exchange Joybus payload data, read a cartridge, or access saves.
 
 This is a starter build, not a full system manager. It does not modify memory cards, IPL, or system settings.
 
 ## Real-hardware launch
 
-Use the homebrew launch method already supported by your console setup (for example, Swiss from SD). Copy the downloaded `cubedeck.dol` to your SD card and launch it from Swiss. Do not overwrite IPL or install anything to console flash memory. Keep a known-good Swiss setup and the original project archive untouched.
+Use the homebrew launch method already supported by your console setup (for example, Swiss from SD). Copy the downloaded `cubedeck.dol` to your SD card and launch it from Swiss. Keep a known-good Swiss setup and the original project archive untouched.
 
 ## Validation checklist
 
 1. Confirm the GitHub Actions build succeeds and both expected output files are present.
-2. Launch the `.dol` from Swiss on the physical console.
-3. Confirm video appears, D-pad selection works, A opens each page, and B returns.
-4. Open Controller test and check all four ports; connect a controller to different ports and verify the status and input values.
-5. If it fails, record the console region/video cable, display mode, and exact failure point before changing code.
+2. Launch the `.dol` from Swiss on the physical console and confirm the dashboard still displays correctly.
+3. Confirm D-pad selection works, A opens each page, and B returns.
+4. Check all four controller ports.
+5. With a compatible GameCube-to-GBA link cable connected to Port 2 and the GBA powered on, open **GBA link cable check** and observe whether it reports a GBA device. Also test with the cable disconnected.
+6. If it fails, record the console region/video cable, display mode, and exact failure point before changing code.
 
 ## Honest status
 
-This source has **not yet been compiled or tested in this environment**, and it has not been tested in Dolphin or on a physical GameCube. The workflow is provided to perform the first reproducible build in the cloud. Do not consider a build successful until GitHub Actions reports success and the artifact is available.
+The code change adding GBA detection has been committed, but this environment has not run the cloud build or tested the new check on Dolphin or a physical GameCube. A successful compile must be confirmed in GitHub Actions; actual cable detection must then be verified on hardware. Do not treat compilation alone as proof of communication.
 
 ## Roadmap
 
-The link transport's safety gates, proposed frame format, and validation sequence are documented in [docs/gba-link-transport.md](docs/gba-link-transport.md). The next project milestone is to add a separate GBA-side link probe and GameCube-side receiver. Those are not included as working binaries yet. Cartridge ROM dumping, controller input over link, and direct save access must be validated independently before being described as supported. The current controller monitor only reads GameCube controller ports; it does not communicate with a GBA.
+See [docs/gba-link-transport.md](docs/gba-link-transport.md) for protocol constraints and the staged implementation plan. Next: use the proven multiboot/SI implementation as a reference, add a tiny GBA-side diagnostic payload, and only then implement bounded Joybus request/response handling. Cartridge ROM reading and save access remain later, separately validated milestones.
