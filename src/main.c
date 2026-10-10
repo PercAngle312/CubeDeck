@@ -24,6 +24,17 @@ static volatile int link_status = 0; /* 0=not queried, 1=checking, 2=GBA found, 
 static volatile u32 link_type_value = 0;
 static u32 link_last_query_frame = 0;
 
+/* Callback-driven, non-blocking Joybus probe buffers and state. */
+static u8 joybus_cmd[32] ATTRIBUTE_ALIGN(32);
+static u8 joybus_res[32] ATTRIBUTE_ALIGN(32);
+static volatile int joybus_pending = 0;
+static volatile int joybus_callback_done = 0;
+static volatile u32 joybus_callback_result = 0;
+static int joybus_stage = 0; /* 0=idle, 1=RESET, 2=STATUS, 3=done, 4=failed */
+static u32 joybus_stage_frame = 0;
+static u8 joybus_status[3] = {0, 0, 0};
+#define JOYBUS_TIMEOUT_FRAMES 120
+
 static const char *menu_items[MENU_COUNT] = {
     "System information",
     "Controller test",
@@ -95,6 +106,54 @@ static void draw_controller(void)
 
     printf("\x1b[21;2HConnect pads to any port to monitor input.");
     printf("\x1b[22;2HB: Back to main menu");
+}
+
+static void joybus_callback(s32 channel, u32 result)
+{
+    (void)channel;
+    joybus_callback_result = result;
+    joybus_callback_done = 1;
+    joybus_pending = 0;
+}
+
+static void start_joybus_transfer(u8 command, u32 response_length)
+{
+    memset(joybus_cmd, 0, sizeof(joybus_cmd));
+    memset(joybus_res, 0, sizeof(joybus_res));
+    joybus_cmd[0] = command;
+    joybus_callback_done = 0;
+    joybus_callback_result = 0;
+    joybus_pending = 1;
+    joybus_stage_frame = frame_count;
+    SI_Transfer(1, joybus_cmd, 1, joybus_res, response_length,
+                joybus_callback, 50);
+}
+
+static void service_joybus_probe(void)
+{
+    if (joybus_pending &&
+        frame_count - joybus_stage_frame > JOYBUS_TIMEOUT_FRAMES) {
+        /* Do not start another transfer: SI_Transfer has no cancellation API. */
+        joybus_stage = 4;
+        return;
+    }
+
+    if (!joybus_callback_done)
+        return;
+
+    joybus_callback_done = 0;
+    if (joybus_callback_result != 0) {
+        joybus_stage = 4;
+        return;
+    }
+
+    if (joybus_stage == 1) {
+        joybus_stage = 2;
+        start_joybus_transfer(0x00, 3); /* Joybus STATUS */
+    } else if (joybus_stage == 2) {
+        memcpy(joybus_status, joybus_res, sizeof(joybus_status));
+        joybus_stage = 3;
+    }
 }
 
 static void draw_link(void)
@@ -210,6 +269,10 @@ int main(int argc, char **argv)
                         link_status = 0;
                         link_type_value = 0;
                         link_last_query_frame = 0;
+                        if (!joybus_pending) {
+                            joybus_stage = 0;
+                            joybus_status[0] = joybus_status[1] = joybus_status[2] = 0;
+                        }
                         screen = SCREEN_LINK;
                         break;
                     case 3: screen = SCREEN_ABOUT; break;
@@ -220,7 +283,18 @@ int main(int argc, char **argv)
             screen = SCREEN_HOME;
         }
 
-        if (screen == SCREEN_LINK && !link_query_pending &&
+        if (screen == SCREEN_LINK && (down & PAD_BUTTON_X) &&
+            link_status == 2 && !link_query_pending && !joybus_pending &&
+            joybus_stage == 0) {
+            joybus_stage = 1;
+            start_joybus_transfer(0xFF, 3); /* Joybus RESET */
+        }
+
+        if (screen == SCREEN_LINK && (joybus_stage == 1 || joybus_stage == 2))
+            service_joybus_probe();
+
+        if (screen == SCREEN_LINK && joybus_stage == 0 && !link_query_pending &&
+            !joybus_pending &&
             (link_last_query_frame == 0 ||
              frame_count - link_last_query_frame >= LINK_QUERY_INTERVAL)) {
             link_query_pending = 1;
