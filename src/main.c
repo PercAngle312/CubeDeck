@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "cubedeck/transport_protocol.h"
 
 #define MENU_COUNT 5
 #define LINK_QUERY_INTERVAL 60
@@ -37,6 +38,10 @@ static u32 joybus_reply = 0;
 static u32 joybus_test_word = 0x12345678u;
 static int joybus_round = 0;
 static int joybus_rounds_target = 1;
+static int joybus_test_mode = 0; /* 1=single, 2=stress, 3=framed packet */
+static uint32_t joybus_packet_words[CDTP_MAX_PACKET_WORDS];
+static size_t joybus_packet_word_count = 0;
+static size_t joybus_packet_word_index = 0;
 #define JOYBUS_TEST_WORD_BASE 0x12345678u
 #define JOYBUS_REPLY_XOR 0xA55A3CC3u
 #define JOYBUS_STRESS_ROUNDS 16
@@ -176,6 +181,10 @@ static void service_joybus_probe(void)
     } else if (joybus_stage == 2) {
         memcpy(joybus_status, joybus_res, sizeof(joybus_status));
         joybus_stage = 3;
+        if (joybus_test_mode == 3) {
+            joybus_packet_word_index = 0;
+            joybus_test_word = joybus_packet_words[0];
+        }
         start_joybus_word_send();
     } else if (joybus_stage == 3) {
         joybus_stage = 4;
@@ -187,6 +196,15 @@ static void service_joybus_probe(void)
                        ((u32)joybus_res[3] << 24);
         if (joybus_reply != (joybus_test_word ^ JOYBUS_REPLY_XOR)) {
             joybus_stage = 6;
+        } else if (joybus_test_mode == 3) {
+            ++joybus_packet_word_index;
+            if (joybus_packet_word_index < joybus_packet_word_count) {
+                joybus_test_word = joybus_packet_words[joybus_packet_word_index];
+                joybus_stage = 3;
+                start_joybus_word_send();
+            } else {
+                joybus_stage = 5;
+            }
         } else {
             ++joybus_round;
             if (joybus_round < joybus_rounds_target) {
@@ -225,7 +243,7 @@ static void draw_link(void)
     switch (joybus_stage) {
         case 0:
             if (link_status == 2)
-                printf("\x1b[13;2HX: one round  |  Y: 16-round link stress test\n");
+                printf("\x1b[13;2HA: framed packet  |  X: one round  |  Y: 16 rounds\n");
             else
                 printf("\x1b[13;2HX test unlocks after GBA detection succeeds.\n");
             break;
@@ -236,19 +254,33 @@ static void draw_link(void)
             printf("\x1b[13;2HJoybus test: waiting for STATUS...\n");
             break;
         case 3:
-            printf("\x1b[13;2HSending word %08lX (%d/%d)...\n",
-                   (unsigned long)joybus_test_word, joybus_round + 1,
-                   joybus_rounds_target);
+            if (joybus_test_mode == 3)
+                printf("\x1b[13;2HSending packet word %lu/%lu...\n",
+                       (unsigned long)(joybus_packet_word_index + 1u),
+                       (unsigned long)joybus_packet_word_count);
+            else
+                printf("\x1b[13;2HSending word %08lX (%d/%d)...\n",
+                       (unsigned long)joybus_test_word, joybus_round + 1,
+                       joybus_rounds_target);
             break;
         case 4:
             printf("\x1b[13;2HReading GBA diagnostic reply...\n");
             break;
         case 5:
-            printf("\x1b[13;2HJOYBUS TEST PASSED: %d/%d replies valid\n",
-                   joybus_round, joybus_rounds_target);
-            printf("\x1b[14;2HLast reply: %08lX  STATUS: %02X %02X %02X\n",
-                   (unsigned long)joybus_reply, joybus_status[0],
-                   joybus_status[1], joybus_status[2]);
+            if (joybus_test_mode == 3) {
+                printf("\x1b[13;2HPACKET TEST PASSED: %lu/%lu words acked\n",
+                       (unsigned long)joybus_packet_word_count,
+                       (unsigned long)joybus_packet_word_count);
+                printf("\x1b[14;2HCRC word: %08lX  Last reply: %08lX\n",
+                       (unsigned long)joybus_packet_words[joybus_packet_word_count - 1u],
+                       (unsigned long)joybus_reply);
+            } else {
+                printf("\x1b[13;2HJOYBUS TEST PASSED: %d/%d replies valid\n",
+                       joybus_round, joybus_rounds_target);
+                printf("\x1b[14;2HLast reply: %08lX  STATUS: %02X %02X %02X\n",
+                       (unsigned long)joybus_reply, joybus_status[0],
+                       joybus_status[1], joybus_status[2]);
+            }
             break;
         case 6:
             printf("\x1b[13;2HReply mismatch on round %d\n", joybus_round + 1);
@@ -366,12 +398,35 @@ int main(int argc, char **argv)
         }
 
         if (screen == SCREEN_LINK &&
-            (down & (PAD_BUTTON_X | PAD_BUTTON_Y)) &&
+            (down & (PAD_BUTTON_A | PAD_BUTTON_X | PAD_BUTTON_Y)) &&
             link_status == 2 && !link_query_pending && !joybus_pending &&
             joybus_stage == 0) {
             joybus_round = 0;
             joybus_rounds_target = (down & PAD_BUTTON_Y) ? JOYBUS_STRESS_ROUNDS : 1;
             joybus_test_word = JOYBUS_TEST_WORD_BASE;
+            if (down & PAD_BUTTON_A) {
+                static const uint8_t sample_payload[7] = {
+                    0x43u, 0x44u, 0x42u, 0x4Bu, 0x10u, 0x20u, 0x30u
+                };
+                cdtp_packet packet;
+                cdtp_status packet_status;
+                memset(&packet, 0, sizeof(packet));
+                packet.opcode = 0x01u;
+                packet.sequence = 0x0001u;
+                packet.payload_length = (uint16_t)sizeof(sample_payload);
+                memcpy(packet.payload, sample_payload, sizeof(sample_payload));
+                packet_status = cdtp_encode(&packet, joybus_packet_words,
+                                            CDTP_MAX_PACKET_WORDS,
+                                            &joybus_packet_word_count);
+                if (packet_status != CDTP_OK || joybus_packet_word_count == 0u) {
+                    joybus_stage = 7;
+                    joybus_test_mode = 3;
+                    continue;
+                }
+                joybus_test_mode = 3;
+            } else {
+                joybus_test_mode = (down & PAD_BUTTON_Y) ? 2 : 1;
+            }
             joybus_stage = 1;
             start_joybus_transfer(0xFF, 3); /* Joybus RESET */
         }
