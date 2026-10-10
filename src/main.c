@@ -178,10 +178,26 @@ static void draw_link(void)
     }
 
     printf("\x1b[11;2HReported SI device type: 0x%08lX\n", (unsigned long)link_type_value);
-    printf("\x1b[13;2HThis is detection only: no Joybus commands are sent,\n");
-    printf("\x1b[14;2Hand no cartridge or save data is accessed.\n");
-    printf("\x1b[16;2HConnect the official/compatible GBA link cable to\n");
-    printf("\x1b[17;2HPort 2 and power on the GBA. Checks repeat every second.\n");
+    switch (joybus_stage) {
+        case 0:
+            printf("\x1b[13;2HPress X to run Joybus RESET then STATUS.\n");
+            break;
+        case 1:
+            printf("\x1b[13;2HJoybus probe: waiting for RESET response...\n");
+            break;
+        case 2:
+            printf("\x1b[13;2HJoybus probe: waiting for STATUS response...\n");
+            break;
+        case 3:
+            printf("\x1b[13;2HProbe complete. STATUS bytes: %02X %02X %02X\n",
+                   joybus_status[0], joybus_status[1], joybus_status[2]);
+            break;
+        case 4:
+            printf("\x1b[13;2HProbe failed or timed out. Re-enter page to retry.\n");
+            break;
+    }
+    printf("\x1b[15;2HProbe sends no ROM or save-data commands.\n");
+    printf("\x1b[17;2HConnect GBA to Port 2; detection checks repeat every second.\n");
     printf("\x1b[21;2HB: Back to main menu\n");
 }
 
