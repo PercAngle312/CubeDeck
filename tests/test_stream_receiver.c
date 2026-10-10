@@ -110,10 +110,17 @@ static int test_fail_closed(void)
     manifest(&p, 2u, 0x12345678u);
     CHECK(cdst_receive(&receiver, &p) == CDST_ACCEPTED);
     p.opcode = CDCS_OP_DATA;
+    p.payload_length = (uint16_t)(CDTP_MAX_PAYLOAD + 1u);
+    CHECK(cdst_receive(&receiver, &p) == CDST_ERR_CAPACITY);
+    CHECK(receiver.offset == 0u && sink.written == 0u);
     p.payload_length = 3u;
     CHECK(cdst_receive(&receiver, &p) == CDST_ERR_CAPACITY);
     p.payload_length = 2u;
     CHECK(cdst_receive(&receiver, &p) == CDST_ACCEPTED);
+    p.payload_length = (uint16_t)(CDTP_MAX_PAYLOAD + 1u);
+    CHECK(cdst_receive(&receiver, &p) == CDST_ERR_CAPACITY);
+    CHECK(receiver.offset == 2u);
+    p.payload_length = 2u;
     p.payload[0] ^= 1u;
     CHECK(cdst_receive(&receiver, &p) == CDST_ERR_SEQUENCE);
     memset(&p, 0, sizeof(p));
