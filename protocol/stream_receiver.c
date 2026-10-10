@@ -33,6 +33,10 @@ cdst_result cdst_receive(cdst_receiver *s, const cdtp_packet *p)
 {
     if (!s || !p || !s->sink)
         return CDST_ERR_ARGUMENT;
+    /* cdst_receive is also public to host callers that may bypass CDTP.
+     * Never pass an out-of-range length to memcmp, memcpy or a sink. */
+    if (p->payload_length > CDTP_MAX_PAYLOAD)
+        return CDST_ERR_CAPACITY;
     if (p->opcode == CDVS_OP_MANIFEST) {
         uint32_t length, checksum;
         if (p->sequence != 0u || p->payload_length != CDVS_MANIFEST_BYTES)
