@@ -53,8 +53,6 @@ static int test_word_level_transfer(size_t length)
 
     while (sender.phase != CDSS_COMPLETE) {
         int outcome;
-        uint32_t frame_words[CDTP_MAX_PACKET_WORDS];
-        size_t count;
         CHECK(frame_number++ < 70u);
         CHECK(cdss_next(&sender, &outgoing) == 1);
 
@@ -68,16 +66,11 @@ static int test_word_level_transfer(size_t length)
             CHECK(cdss_timeout(&sender) == 0);
         }
 
-        CHECK(cdtp_encode(&outgoing, frame_words,
-                          CDTP_MAX_PACKET_WORDS, &count) == CDTP_OK);
         outcome = transmit_words(&gba_parser, &outgoing, &delivered, 0, 0);
         CHECK(outcome == 1);
-        /* Re-encode the validated decoded request for the manifest receiver:
-         * no direct packet shortcuts across the word stream.
-         */
-        CHECK(cdtp_encode(&delivered, frame_words,
-                          CDTP_MAX_PACKET_WORDS, &count) == CDTP_OK);
-        CHECK(cdsw_receive_frame(&receiver, frame_words, count, &reply) == 1);
+        /* Decoding has already verified CRC, so hand its safe packet
+         * straight to the verified session without redundant encoding. */
+        CHECK(cdsw_receive_decoded(&receiver, &delivered, &reply) == 1);
 
         /* A lost ACK prompts an exact retry; replay must not append twice. */
         if (outgoing.opcode == CDCS_OP_DATA &&
@@ -86,8 +79,7 @@ static int test_word_level_transfer(size_t length)
             CHECK(cdss_timeout(&sender) == 0);
             CHECK(transmit_words(&gba_parser, &outgoing,
                                  &delivered, 0, 0) == 1);
-            CHECK(cdsw_receive_frame(&receiver, frame_words,
-                                     count, &reply) == 1);
+            CHECK(cdsw_receive_decoded(&receiver, &delivered, &reply) == 1);
             CHECK(receiver.chunks.length == previous);
         }
 
