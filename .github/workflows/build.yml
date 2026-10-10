@@ -33,7 +33,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
       - name: Install GBA development libraries
-        run: pacman -S --noconfirm gba-dev
+        run: dkp-pacman -S --noconfirm gba-dev
       - name: Build GBA diagnostic ROM
         run: make -C gba-diagnostic clean all
       - name: Upload GBA diagnostic artifact
