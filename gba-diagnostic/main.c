@@ -13,8 +13,7 @@
 #define REG_JOY_TRANS_L  (*(volatile uint16_t *)0x04000154)
 #define REG_JOY_TRANS_H  (*(volatile uint16_t *)0x04000156)
 
-#define JOYCNT_RECEIVE (1u << 1)
-#define JOYCNT_SEND    (1u << 2)
+#define JOYCNT_RECEIVE (1u << 0) /* Receive-complete flag; write 1 to clear. */
 #define JOYCNT_IRQ     (1u << 6)
 #define JOY_SIGNATURE  0x4344424Bu /* "CDBK" */
 #define JOY_REPLY_XOR  0xA55A3CC3u
@@ -30,6 +29,7 @@ static uint32_t read_received_word(void)
 
 static void write_transmit_word(uint32_t value)
 {
+    /* Joybus words are exposed as low and high 16-bit registers. */
     REG_JOY_TRANS_H = (uint16_t)(value >> 16);
     REG_JOY_TRANS_L = (uint16_t)value;
 }
@@ -38,14 +38,12 @@ static void joybus_irq(void)
 {
     uint16_t status = REG_JOYCNT;
     if (status & JOYCNT_RECEIVE) {
-        received_value = read_received_word();
-        ++received_count;
-        reply_value = received_value ^ JOY_REPLY_XOR;
-        REG_JOYCNT |= JOYCNT_RECEIVE;
-    }
-    if (status & JOYCNT_SEND) {
+        uint32_t word = read_received_word();
+        received_value = word;
+        reply_value = word ^ JOY_REPLY_XOR;
         write_transmit_word(reply_value);
-        REG_JOYCNT |= JOYCNT_SEND;
+        ++received_count;
+        REG_JOYCNT |= JOYCNT_RECEIVE;
     }
 }
 
@@ -59,7 +57,9 @@ static void paint_screen(uint16_t color)
 int main(void)
 {
     irqInit();
-    REG_RCNT |= (1u << 14) | (1u << 15);
+    /* RCNT mode bits 15:14 select Joybus mode. */
+    REG_RCNT = (uint16_t)((REG_RCNT & 0x3FFFu) | 0xC000u);
+    write_transmit_word(JOY_SIGNATURE);
     REG_JOYCNT |= JOYCNT_IRQ;
     irqSet(IRQ_SERIAL, joybus_irq);
     irqEnable(IRQ_SERIAL | IRQ_VBLANK);
