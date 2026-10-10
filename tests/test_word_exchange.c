@@ -154,11 +154,25 @@ static int test_nack_retransmit(void)
     memset(&reply, 0, sizeof(reply));
     reply.session_id = id + 1u;
     reply.opcode = CDRL_OP_NACK;
+    reply.payload_length = 1u;
+    reply.payload[0] = CDVS_OP_MANIFEST;
     CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
     for (i = 0u; i < count; ++i)
         CHECK(cdwx_reply_word(&link, words[i]) == 0);
     CHECK(link.phase == CDWX_WAIT_REPLY && sender.retries == 0u);
     reply.session_id = id;
+    reply.payload[0] = CDCS_OP_DATA; /* wrong phase, same sequence */
+    CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    for (i = 0u; i < count; ++i)
+        CHECK(cdwx_reply_word(&link, words[i]) == 0);
+    CHECK(link.phase == CDWX_WAIT_REPLY && sender.retries == 0u);
+    reply.payload_length = 0u; /* legacy v1 NACK is not valid in v2 */
+    CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
+    for (i = 0u; i < count; ++i)
+        CHECK(cdwx_reply_word(&link, words[i]) == 0);
+    CHECK(link.phase == CDWX_WAIT_REPLY && sender.retries == 0u);
+    reply.payload_length = 1u;
+    reply.payload[0] = CDVS_OP_MANIFEST;
     CHECK(cdgu_encode(&reply, words, CDTP_MAX_PACKET_WORDS, &count) == 0);
     for (i = 0u; i < count; ++i)
         CHECK(cdwx_reply_word(&link, words[i]) == 0);
