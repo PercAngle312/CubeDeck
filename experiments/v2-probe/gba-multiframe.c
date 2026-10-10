@@ -117,7 +117,7 @@ int main(void)
                 default: paint_screen(RGB5(22, 22, 22)); break;
             }
         }
-        if (packet_ready) {
+        if (packet_ready && packet_result == 0) {
             unsigned int n, i;
             int status;
             uint16_t old_ime = REG_IME;
