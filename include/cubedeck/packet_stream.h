@@ -5,13 +5,11 @@
 
 /*
  * Host-only word-stream parser. Feed one 32-bit Joybus word at a time.
- * A new magic word always starts a new frame (including mid-frame resync).
- * Frames with bad length, version, or CRC are discarded without touching
- * any higher-level RAM transfer session.
- *
- * Note: the magic value inside a payload is valid data in a framed stream.
- * Accordingly, only interpret magic as a restart while waiting for a header,
- * or after rejecting a malformed frame. Do not restart mid-payload.
+ * A magic word starts a frame only when the parser is idle. Malformed frames
+ * are discarded and parsing resumes at the next magic word. The magic word
+ * can also occur in valid payload data and must not reset an active frame.
+ * Without timeout or explicit reset, a truncated frame can consume later
+ * words; callers must reset the parser on transport timeout or new session.
  */
 typedef struct {
     uint32_t words[CDTP_MAX_PACKET_WORDS];
