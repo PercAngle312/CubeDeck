@@ -479,3 +479,41 @@ jobs:
             protocol/word_exchange.c tests/test_word_exchange_fault_matrix.c \
             -o /tmp/test-word-exchange-fault-matrix
           /tmp/test-word-exchange-fault-matrix
+
+  build-v2-probe-gamecube:
+    name: Build opt-in v2 Joybus GameCube probe
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile isolated v2 GameCube DOL
+        run: |
+          make -f experiments/v2-probe/Makefile gamecube
+      - name: Upload experimental DOL
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-probe-gamecube
+          path: experiments/v2-probe/out/cubedeck-v2-probe.dol
+
+  build-v2-probe-gba:
+    name: Build opt-in v2 Joybus GBA probe
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Check libgba availability and compile isolated v2 GBA ROM
+        run: |
+          set -eu
+          if [ ! -f "$DEVKITPRO/libgba/include/gba.h" ]; then
+            pacman -Sy --noconfirm gba-dev
+          fi
+          make -f experiments/v2-probe/Makefile gba
+      - name: Upload experimental GBA ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-probe-gba
+          path: experiments/v2-probe/out/cubedeck-v2-probe.gba
