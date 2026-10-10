@@ -80,3 +80,9 @@ The new host test encodes/decodes the manifest and full-size chunks, exercises r
 `include/cubedeck/packet_stream.h` and `protocol/packet_stream.c` accumulate incoming Joybus-sized 32-bit words into a bounded CDTP frame. They reject unsupported version and overlong declared payload before buffering the full message, and only deliver frames whose CRC and padding validate. A magic value embedded in payload is treated as payload, not a reset command. The host test sweeps all 257 possible payload lengths (0 through 256), including payload-embedded magic values, and verifies bad-CRC and invalid-header recovery.
 
 This parser is **not** yet attached to the GBA IRQ routine or GameCube SI callback. A truncated valid-looking frame cannot be recognized without a timeout, so any future hardware integration must call `cdps_init` when the session restarts or a frame times out. No real-hardware test is needed for this host-only layer.
+
+## Full host-only sender/receiver simulation
+
+`include/cubedeck/session_sender.h` and `protocol/session_sender.c` now provide the missing sending side of the manifest-first transaction: send the expected length/CRC32 manifest, then sequential DATA frames, then FINISH. The sender requires a sequence-specific ACK at each step, allows at most three caller-triggered retransmissions per step, and fails closed when retries are exhausted. The accompanying CI simulation exercises empty, 1-byte, 257-byte, and 4096-byte transfers all the way through the framed receiver, including a corrupted DATA frame and simulated lost acknowledgment.
+
+This is still **host-only simulation**, not bulk data transfer running on GameCube or GBA hardware. The known-good console sources are unchanged; the GCMCE/memory-card incident remains unresolved.
