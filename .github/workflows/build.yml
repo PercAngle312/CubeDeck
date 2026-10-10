@@ -249,3 +249,20 @@ jobs:
             protocol/reliable_link.c protocol/chunk_session.c \
             tests/test_stream_wire.c -o /tmp/test-stream-wire
           /tmp/test-stream-wire
+
+  test-stream-sender:
+    name: Test 128 KiB streaming sender and receiver
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and simulate callback-driven transfer
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/image_integrity.c \
+            protocol/stream_receiver.c protocol/stream_wire.c \
+            protocol/stream_sender.c protocol/reliable_link.c \
+            protocol/chunk_session.c tests/test_stream_sender.c \
+            -o /tmp/test-stream-sender
+          /tmp/test-stream-sender
