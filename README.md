@@ -48,4 +48,4 @@ The shared C protocol modules now support packet CRC32, sequence checking, idemp
 4. Once ROM acquisition is proven, evaluate a GameCube-compatible GBA emulator/frontend and storage path for TV playback.
 5. Investigate save access separately, starting read-only and protecting existing saves.
 
-CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. See [docs/gba-link-transport.md](docs/gba-link-transport.md) for transport details and validation rules.
+CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. See [docs/gba-link-transport.md](docs/gba-link-transport.md) for transport details and validation rules, and [docs/rom-acquisition-plan.md](docs/rom-acquisition-plan.md) for the separate, read-only retail-cartridge multiboot roadmap.
