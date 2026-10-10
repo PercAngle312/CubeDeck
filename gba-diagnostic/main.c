@@ -1,5 +1,6 @@
 #include <gba.h>
 #include <stdint.h>
+#include "cubedeck/transport_protocol.h"
 
 /*
  * CubeDeck GBA link diagnostic.
@@ -21,6 +22,11 @@
 static volatile uint32_t received_value;
 static volatile uint32_t reply_value = JOY_SIGNATURE;
 static volatile uint32_t received_count;
+/* IRQ captures packets but retains the proven per-word XOR reply. */
+static volatile uint32_t packet_words[CDTP_MAX_PACKET_WORDS];
+static volatile unsigned int packet_count;
+static volatile unsigned int packet_expected;
+static volatile unsigned int packet_ready;
 
 static uint32_t read_received_word(void)
 {
@@ -43,6 +49,30 @@ static void joybus_irq(void)
         reply_value = word ^ JOY_REPLY_XOR;
         write_transmit_word(reply_value);
         ++received_count;
+        if (!packet_ready) {
+            if (word == CDTP_MAGIC) {
+                packet_count = 0;
+                packet_expected = 0;
+            }
+            if (packet_count != 0 || word == CDTP_MAGIC) {
+                unsigned int index = packet_count;
+                if (index < CDTP_MAX_PACKET_WORDS) {
+                    packet_words[index] = word;
+                    packet_count = index + 1u;
+                    if (packet_count == 3u) {
+                        if (word <= CDTP_MAX_PAYLOAD)
+                            packet_expected = 4u + ((word + 3u) / 4u);
+                        else
+                            packet_count = 0;
+                    }
+                    if (packet_expected && packet_count == packet_expected)
+                        packet_ready = 1;
+                } else {
+                    packet_count = 0;
+                    packet_expected = 0;
+                }
+            }
+        }
         REG_JOYCNT |= JOYCNT_RECEIVE;
     }
 }
@@ -68,9 +98,12 @@ int main(void)
     paint_screen(RGB5(0, 8, 20));
 
     uint32_t shown_count = 0;
+    uint32_t decoded_words[CDTP_MAX_PACKET_WORDS];
+    cdtp_packet decoded_packet;
+    int packet_result = 0; /* 0=none, 1=valid sample, -1=invalid */
     for (;;) {
         uint32_t count = received_count;
-        if (count != shown_count) {
+        if (count != shown_count && packet_result == 0) {
             shown_count = count;
             /* Use unmistakably different colors so a received word is visible. */
             switch (count & 3u) {
@@ -78,6 +111,37 @@ int main(void)
                 case 2: paint_screen(RGB5(0, 31, 0)); break;  /* green */
                 case 3: paint_screen(RGB5(31, 31, 0)); break; /* yellow */
                 default: paint_screen(RGB5(31, 0, 31)); break; /* magenta */
+            }
+        }
+        if (packet_ready) {
+            unsigned int n, i;
+            cdtp_status status;
+            uint16_t old_ime = REG_IME;
+            REG_IME = 0;
+            n = packet_count;
+            for (i = 0; i < n && i < CDTP_MAX_PACKET_WORDS; ++i)
+                decoded_words[i] = packet_words[i];
+            packet_count = 0;
+            packet_expected = 0;
+            packet_ready = 0;
+            REG_IME = old_ime;
+            status = cdtp_decode(decoded_words, n, &decoded_packet);
+            if (status == CDTP_OK &&
+                decoded_packet.opcode == 1u &&
+                decoded_packet.sequence == 1u &&
+                decoded_packet.payload_length == 7u &&
+                decoded_packet.payload[0] == 0x43u &&
+                decoded_packet.payload[1] == 0x44u &&
+                decoded_packet.payload[2] == 0x42u &&
+                decoded_packet.payload[3] == 0x4Bu &&
+                decoded_packet.payload[4] == 0x10u &&
+                decoded_packet.payload[5] == 0x20u &&
+                decoded_packet.payload[6] == 0x30u) {
+                packet_result = 1;
+                paint_screen(RGB5(0, 31, 31)); /* cyan = verified */
+            } else {
+                packet_result = -1;
+                paint_screen(RGB5(31, 0, 0)); /* red = invalid */
             }
         }
         VBlankIntrWait();
