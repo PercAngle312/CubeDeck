@@ -376,3 +376,21 @@ jobs:
             protocol/bound_stream.c tests/test_bound_stream.c \
             -o /tmp/test-bound-stream
           /tmp/test-bound-stream
+
+  test-bound-word-stream:
+    name: Test session-bound 64 KiB word streaming
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and run session-bound word-level fault simulation
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/packet_stream.c \
+            protocol/chunk_session.c protocol/reliable_link.c \
+            protocol/image_integrity.c protocol/stream_receiver.c \
+            protocol/stream_sender.c protocol/stream_wire.c \
+            protocol/session_guard.c protocol/bound_stream.c \
+            tests/test_bound_word_stream.c -o /tmp/test-bound-word-stream
+          /tmp/test-bound-word-stream
