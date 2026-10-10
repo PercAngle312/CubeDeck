@@ -1,6 +1,6 @@
 #include "cubedeck/stream_wire.h"
 
-static int reply_for(cdst_receiver *receiver, uint8_t opcode,
+static int reply_for(uint8_t opcode,
                      uint16_t sequence, cdtp_packet *reply)
 {
     if (cdrl_make_reply(opcode, sequence, reply) != 0)
@@ -17,9 +17,9 @@ int cdstw_receive_decoded(cdst_receiver *receiver,
     result = cdst_receive(receiver, packet);
     if (result == CDST_ACCEPTED || result == CDST_DUPLICATE ||
         result == CDST_VERIFIED)
-        return reply_for(receiver, CDRL_OP_ACK, packet->sequence, reply);
+        return reply_for(CDRL_OP_ACK, packet->sequence, reply);
     /* At maximum sequence 65535, only FINISH may be expected. */
-    return reply_for(receiver, CDRL_OP_NACK,
+    return reply_for(CDRL_OP_NACK,
                      (uint16_t)receiver->next_sequence, reply);
 }
 
@@ -31,7 +31,7 @@ int cdstw_receive_frame(cdst_receiver *receiver,
     if (!receiver || !words || !reply)
         return -1;
     if (cdtp_decode(words, word_count, &packet) != CDTP_OK)
-        return reply_for(receiver, CDRL_OP_NACK,
+        return reply_for(CDRL_OP_NACK,
                          (uint16_t)receiver->next_sequence, reply);
     return cdstw_receive_decoded(receiver, &packet, reply);
 }
