@@ -28,6 +28,7 @@ typedef struct {
     size_t offset;
     uint32_t next_sequence;
     unsigned int retries;
+    uint16_t chunk_capacity;
     cdtx_phase phase;
     cdtp_packet pending;
     int pending_valid;
@@ -35,6 +36,9 @@ typedef struct {
 
 int cdtx_init(cdtx_sender *sender, cdtx_source reader, void *context,
               uint32_t length, uint32_t crc32);
+/* Select a nonzero chunk size at most 256. The caller must ensure\n * ceil(length / chunk_capacity) does not exceed 65535 sequences. */
+int cdtx_init_chunked(cdtx_sender *sender, cdtx_source reader, void *context,
+                      uint32_t length, uint32_t crc32, uint16_t chunk_capacity);
 /* 1 = outstanding frame, 0 = completed, -1 = failed. */
 int cdtx_next(cdtx_sender *sender, cdtp_packet *frame);
 /* 1 = current frame acknowledged, 0 = ignored or retry, -1 = failed. */
