@@ -71,7 +71,7 @@ int main(void)
     CHECK(cdseg_next(&planner, &span) == 1);
     CHECK(span.length == 65535u * 252u);
     CHECK(cdseg_next(&planner, &span) == 1);
-    CHECK(span.length == 524800u);
+    CHECK(span.length == 524792u);
     CHECK(span.data_packets == 2083u);
     CHECK(cdseg_next(&planner, &span) == 0);
     puts("Legacy and session-bound 32 MiB+ segment planning passed.");
