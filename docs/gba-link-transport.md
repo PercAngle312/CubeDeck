@@ -92,3 +92,15 @@ This is still **host-only simulation**, not bulk data transfer running on GameCu
 The `tests/test_word_level_session.c` job now simulates both sides of the cable at the **32-bit Joybus-word level** rather than passing fully assembled DATA packets directly. The sender serializes MANIFEST, DATA and FINISH into CDTP words. An incremental parser accepts the words, independently checks CRC32, and passes validated packets to `cdsw_receive_decoded`, which applies session sequence, manifest and checksum rules. ACKs travel back through a separate word parser. The test includes deliberately damaged DATA CRCs, a lost ACK, the final 4096-byte transfer integrity check, and resetting the word parser after a truncated-frame timeout. The receiver code does not read any memory card or cartridge.
 
 This remains **host simulation only**: it does not prove physical packet streaming above the already confirmed seven-byte hardware sample. The hardware IRQ and GameCube SI callback paths are unchanged. Future console wiring must address packet-completion timing, timeouts, and how ACK packets are delivered over GBA Joybus without breaking the existing XOR diagnostic.
+
+## Larger RAM-light receive prototype (host only)
+
+`include/cubedeck/stream_receiver.h` and `protocol/stream_receiver.c` add an incremental, **no-built-in-storage** receiver with an abstract chunk consumer callback. Instead of buffering an entire transfer in the GBA's memory, the receiver retains only the current 256-byte DATA chunk for duplicate detection, a rolling CRC32, the manifest, counters, and sequence state. It checks the final byte count and whole-image CRC at FINISH. An external consumer callback must provide atomic success/failure semantics: nonzero returns are treated as no bytes committed. There is intentionally **no** memory-card, cartridge, or file-writing consumer yet.
+
+The sequence number bounds each independent streaming session to **65,535 DATA chunks** (maximum 16,776,960 bytes at 256 bytes/chunk), so larger ROMs would need multiple validated sessions or a future protocol version. This is a *design limit*, not a measured cable throughput or supported ROM dump capability.
+
+`tests/test_stream_receiver.c` uses a RAM-only mock sink to stream **32,771 bytes**, verify CRC32, simulate a failed consumer write (with no progression), detect duplicate replay and corruption, and reject lengths above the protocol limit. This does **not** imply the runtime streams real GBA game data yet.
+
+## Storage guard in CI
+
+`tests/check_runtime_storage_writes.py` rejects selected direct GameCube CARD, filesystem-write and GBA save-write API references found in the project's runtime and shared protocol C files. This is intentionally a **narrow static guard**; it cannot rule out indirect writes by libogc, Swiss, FlippyDrive or GCMCE firmware. The earlier memory-card incident remains unresolved, so disconnect the GCMCE for any future experimental hardware test.
