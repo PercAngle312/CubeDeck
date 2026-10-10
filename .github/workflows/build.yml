@@ -63,3 +63,16 @@ jobs:
             -o /tmp/test-transport-protocol
       - name: Run host protocol tests
         run: /tmp/test-transport-protocol
+
+  test-chunk-session:
+    name: Test retry-safe chunk sessions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and run chunk tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            tests/test_chunk_session.c -o /tmp/test-chunk-session
+          /tmp/test-chunk-session
