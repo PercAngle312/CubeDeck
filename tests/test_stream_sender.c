@@ -59,7 +59,7 @@ static int test_transfer(void)
     static transfer_ctx context;
     cdtx_sender sender;
     cdst_receiver receiver;
-    cdtp_packet packet, repeat, reply, stray;
+    cdtp_packet packet, repeat, reply, stray, prior_manifest_ack;
     size_t i, steps = 0;
     unsigned int previous_reads;
     for (i = 0; i < LENGTH; ++i)
@@ -68,6 +68,7 @@ static int test_transfer(void)
     CHECK(cdtx_init(&sender, source_read, &context, LENGTH,
                     cdim_crc32(context.source, LENGTH)) == 0);
     context.fail_read_once = 1;
+    memset(&prior_manifest_ack, 0, sizeof(prior_manifest_ack));
 
     while (sender.phase != CDTX_COMPLETE) {
         CHECK(++steps < 600u);
@@ -90,6 +91,14 @@ static int test_transfer(void)
             CHECK(memcmp(&packet, &repeat, sizeof(packet)) == 0);
         }
         CHECK(dispatch(&receiver, &packet, &reply, 0) == 1);
+        if (packet.opcode == CDVS_OP_MANIFEST)
+            prior_manifest_ack = reply;
+        if (packet.opcode == CDCS_OP_DATA && packet.sequence == 0u) {
+            size_t before = sender.offset;
+            CHECK(cdtx_reply(&sender, &prior_manifest_ack) == 0);
+            CHECK(sender.offset == before);
+            CHECK(sender.pending_valid);
+        }
         if (packet.opcode == CDCS_OP_DATA &&
             packet.sequence == 10u && sender.retries == 0u) {
             size_t before = receiver.offset;
