@@ -90,3 +90,17 @@ jobs:
             protocol/reliable_link.c tests/test_reliable_link.c \
             -o /tmp/test-reliable-link
           /tmp/test-reliable-link
+
+  test-image-integrity:
+    name: Test whole-image checksum
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and simulate checked transfer
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c protocol/image_integrity.c \
+            tests/test_image_integrity.c -o /tmp/test-image-integrity
+          /tmp/test-image-integrity
