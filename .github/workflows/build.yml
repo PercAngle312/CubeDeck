@@ -1,0 +1,28 @@
+
+name: Build CubeDeck
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build GameCube DOL
+        run: make clean && make
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-gamecube
+          path: |
+            cubedeck.dol
+            cubedeck.elf
+          if-no-files-found: error
