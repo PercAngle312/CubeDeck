@@ -62,7 +62,7 @@ int main(void)
     REG_RCNT |= (1u << 14) | (1u << 15);
     REG_JOYCNT |= JOYCNT_IRQ;
     irqSet(IRQ_SERIAL, joybus_irq);
-    irqEnable(IRQ_SERIAL);
+    irqEnable(IRQ_SERIAL | IRQ_VBLANK);
 
     REG_DISPCNT = MODE_3 | BG2_ENABLE;
     paint_screen(RGB5(0, 8, 20));
