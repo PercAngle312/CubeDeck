@@ -266,3 +266,20 @@ jobs:
             protocol/chunk_session.c tests/test_stream_sender.c \
             -o /tmp/test-stream-sender
           /tmp/test-stream-sender
+
+  test-stream-edges:
+    name: Test empty stream and recovery edge cases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and run empty-session checks
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/image_integrity.c \
+            protocol/stream_receiver.c protocol/stream_wire.c \
+            protocol/stream_sender.c protocol/reliable_link.c \
+            protocol/chunk_session.c tests/test_stream_edges.c \
+            -o /tmp/test-stream-edges
+          /tmp/test-stream-edges
