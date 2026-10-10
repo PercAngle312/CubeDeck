@@ -112,3 +112,9 @@ The RAM-light receiver now has a `cdstw_receive_frame` bridge in `protocol/strea
 CI covers a **131,077-byte (128 KiB plus 5 bytes)** manifest-to-DATA-to-FINISH transfer over these two protocol components, plus corrupted frames, rejected consumer operations, lost acknowledgements, stale ACKs, and failed source reads. The built-in streaming session limit remains **16,776,960 bytes**, based on 65,535 data sequence numbers and 256-byte packet payloads. Actual physical Joybus bulk streaming has *not* been tested or wired into the console applications.
 
 **Protocol limitation:** current stop-and-wait ACK packets identify sequence only, not their corresponding opcode/phase. The MANIFEST and initial DATA packet both use sequence zero. The future hardware adaptation must disambiguate delayed ACKs across phases (for example by including the acknowledged opcode or a session identifier) before claiming robust bulk transfer. CRC32 guards accidental corruption but is **not** cryptographic authentication.
+
+## Streaming ACK phase binding
+
+The host-only streaming bridge now tags each successful ACK with **one payload byte identifying the acknowledged opcode**. The streaming sender accepts an ACK only when **both** the sequence and the acknowledged opcode match its cached outstanding packet. This closes a stop-and-wait ambiguity where a delayed ACK for MANIFEST sequence 0 could otherwise be mistaken for DATA sequence 0. Tests inject that exact stale-manifest-ACK case and confirm it does not advance the sender.
+
+NACKs still use zero payload and report the next sequence expected by the receiver. This change applies only to `cdtx_sender`/`cdstw_receive_frame`; earlier RAM-only protocol components retain their older ACK format and require the same phase distinction before being used in a real hardware bulk-transfer workflow.
