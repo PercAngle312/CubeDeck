@@ -49,3 +49,17 @@ jobs:
             gba-diagnostic/cubedeck-gba-diagnostic.gba
             gba-diagnostic/cubedeck-gba-diagnostic.elf
           if-no-files-found: error
+
+  test-transport-protocol:
+    name: Test portable transport protocol
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile host protocol tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c tests/test_transport_protocol.c \
+            -o /tmp/test-transport-protocol
+      - name: Run host protocol tests
+        run: /tmp/test-transport-protocol
