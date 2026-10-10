@@ -193,3 +193,20 @@ jobs:
             protocol/session_sender.c tests/test_transfer_fault_sweep.c \
             -o /tmp/test-transfer-fault-sweep
           /tmp/test-transfer-fault-sweep
+
+  test-word-level-session:
+    name: Test end-to-end word stream transfers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Simulate complete word-level bidirectional exchange
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/packet_stream.c \
+            protocol/chunk_session.c protocol/reliable_link.c \
+            protocol/image_integrity.c protocol/verified_session.c \
+            protocol/session_wire.c protocol/session_sender.c \
+            tests/test_word_level_session.c -o /tmp/test-word-level-session
+          /tmp/test-word-level-session
