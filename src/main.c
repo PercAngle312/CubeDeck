@@ -283,7 +283,11 @@ static void draw_link(void)
             }
             break;
         case 6:
-            printf("\x1b[13;2HReply mismatch on round %d\n", joybus_round + 1);
+            if (joybus_test_mode == 3)
+                printf("\x1b[13;2HPacket word %lu reply mismatch\n",
+                       (unsigned long)(joybus_packet_word_index + 1u));
+            else
+                printf("\x1b[13;2HReply mismatch on round %d\n", joybus_round + 1);
             printf("\x1b[14;2HGBA: %08lX  Expected: %08lX\n",
                    (unsigned long)joybus_reply,
                    (unsigned long)(joybus_test_word ^ JOYBUS_REPLY_XOR));
@@ -294,7 +298,7 @@ static void draw_link(void)
             printf("\x1b[14;2HRe-enter page to retry.\n");
             break;
     }
-    printf("\x1b[16;2HFixed diagnostic word only; no ROM/save data is sent.\n");
+    printf("\x1b[16;2HBuilt-in sample only; no ROM/save data is sent.\n");
     printf("\x1b[17;2HConnect GBA to Port 2; detection checks repeat every second.\n");
     printf("\x1b[21;2HB: Back to main menu\n");
 }
