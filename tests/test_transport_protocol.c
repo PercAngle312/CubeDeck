@@ -106,6 +106,12 @@ static void test_rejects_corruption_and_bad_shape(void)
 
     words[0] = 0u;
     CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
+    words[0] = CDTP_MAGIC;
+    words[1] = 0x02020700u;
+    CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_FORMAT);
+    words[1] = 0x01020700u;
+    words[2] = CDTP_MAX_PAYLOAD + 1u;
+    CHECK(cdtp_decode(words, count, &output) == CDTP_ERR_TOO_LARGE);
 }
 
 static void test_argument_and_capacity_errors(void)
