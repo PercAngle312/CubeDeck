@@ -219,3 +219,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Reject direct memory-card and filesystem writes
         run: python3 tests/check_runtime_storage_writes.py
+
+  test-stream-receiver:
+    name: Test RAM-light streaming integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and run streaming checks
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/stream_receiver.c protocol/image_integrity.c \
+            tests/test_stream_receiver.c -o /tmp/test-stream-receiver
+          /tmp/test-stream-receiver
