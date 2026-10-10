@@ -53,3 +53,28 @@ also checks the callback edge. The known-good single-frame and three-frame
 cyan-validated binaries were never modified. Users must download a *new*
 `cubedeck-v2-ack-gamecube` artifact from a successful build after this
 correction: the previously downloaded DOL will remain defective.
+
+## Generic failure or timeout after RESET fix (2026-10-10)
+
+The second hardware report was `Joybus transfer failed or timed out`.
+That message alone does **not** identify whether RESET/STATUS/SEND/READ,
+the new packet-verdict query, or the retry budget failed.
+
+The GameCube ACK experiment now records and displays an explicit failure
+snapshot, without touching the proven multiframe source or the GBA ROM:
+
+- **Code 1**: watchdog expired while `SI_Transfer` was still pending;
+  never immediately resubmit the transfer because SI has no cancellation
+- **Code 2**: SI callback reported an error; the numeric SI result is shown
+- **Code 3**: the GBA returned NACK/PENDING too many times (retry exhausted);
+  compare the last reply and GBA screen color
+- **Code 4**: the next synthetic packet could not be encoded
+
+The screen also shows the last active **stage**, frame, word index, retry
+count, SI callback result, and last verdict. Stage **1=RESET**,
+**2=STATUS**, **3=SEND frame word**, **4=READ echo**, **8=wait for
+decoder**, **9=SEND verdict query**, **10=READ verdict**.
+
+This is a diagnostic revision, not a confirmed fix for the second
+hardware failure. Use a **new** GameCube ACK artifact produced after the
+diagnostics change; the GBA ACK image is unchanged. No cart/save writes.
