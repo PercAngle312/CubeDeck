@@ -1,0 +1,31 @@
+#ifndef CUBEDECK_PACKET_STREAM_H
+#define CUBEDECK_PACKET_STREAM_H
+
+#include "cubedeck/transport_protocol.h"
+
+/*
+ * Host-only word-stream parser. Feed one 32-bit Joybus word at a time.
+ * A new magic word always starts a new frame (including mid-frame resync).
+ * Frames with bad length, version, or CRC are discarded without touching
+ * any higher-level RAM transfer session.
+ *
+ * Note: the magic value inside a payload is valid data in a framed stream.
+ * Accordingly, only interpret magic as a restart while waiting for a header,
+ * or after rejecting a malformed frame. Do not restart mid-payload.
+ */
+typedef struct {
+    uint32_t words[CDTP_MAX_PACKET_WORDS];
+    size_t count;
+    size_t expected;
+    uint32_t accepted;
+    uint32_t rejected;
+} cdps_parser;
+
+void cdps_init(cdps_parser *parser);
+
+/* Returns 1 for a complete CRC-valid packet, 0 for incomplete/no packet,
+ * -1 for a discarded malformed frame or invalid arguments.
+ * On success the output packet contains only validated bytes.
+ */
+int cdps_feed(cdps_parser *parser, uint32_t word, cdtp_packet *out_packet);
+#endif
