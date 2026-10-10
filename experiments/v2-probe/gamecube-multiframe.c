@@ -460,9 +460,6 @@ int main(int argc, char **argv)
                     continue;
                 }
                 joybus_test_mode = 3;
-                    continue;
-                }
-                joybus_test_mode = 3;
             } else {
                 joybus_test_mode = (down & PAD_BUTTON_Y) ? 2 : 1;
             }
@@ -470,7 +467,7 @@ int main(int argc, char **argv)
             start_joybus_transfer(0xFF, 3); /* Joybus RESET */
         }
 
-        if (screen == SCREEN_LINK && (joybus_stage >= 1 && joybus_stage <= 4 || joybus_stage == 8))
+        if (screen == SCREEN_LINK && ((joybus_stage >= 1 && joybus_stage <= 4) || joybus_stage == 8))
             service_joybus_probe();
 
         if (screen == SCREEN_LINK && joybus_stage == 0 && !link_query_pending &&
