@@ -48,3 +48,11 @@ The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, 
 ## Validation policy
 
 Keep the known-working GameCube video initialization and framebuffer stride untouched. Minimize hardware testing; group changes into meaningful hardware milestones. Keep GCMCE disconnected while the earlier unexplained memory-card incident remains unresolved. Build GameCube and GBA components with separate toolchains. CI success proves compilation/artifact creation only. Record hardware milestones only after real request/response or data-integrity evidence.
+
+## Stop-and-wait transfer simulation (host only)
+
+`include/cubedeck/reliable_link.h` and `protocol/reliable_link.c` add a bounded stop-and-wait sender and CRC-guarded receiver for packetized RAM data (up to 4096 bytes per session). Each DATA packet uses the existing CRC32 wire framing, is matched to a 16-bit sequence, and requires an empty-payload ACK with that sequence. A NACK or caller-declared timeout schedules a retransmission; after three retries, the sender fails closed. The receiver treats an exact retry of the last accepted packet as an idempotent duplicate instead of appending data twice.
+
+`tests/test_reliable_link.c` simulates a 4096-byte transfer, a corrupted packet (NACK then retransmission), a lost ACK (duplicate retry without duplicate append), mismatched ACK sequence, and retry exhaustion. **This is deliberately host-only: it does not make GameCube or GBA stream chunks yet, nor does it access any memory card, cartridge or storage device.** CI compiles the simulator independently from both console binaries.
+
+Future work: design GBA Joybus response scheduling for an actual frame-level ACK (distinct from the existing XOR word acknowledgment), connect one bounded chunk session to the console runtimes, and test only after substantial CI coverage.
