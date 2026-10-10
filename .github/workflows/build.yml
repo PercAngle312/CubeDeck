@@ -118,3 +118,18 @@ jobs:
             protocol/image_integrity.c protocol/verified_session.c \
             tests/test_verified_session.c -o /tmp/test-verified-session
           /tmp/test-verified-session
+
+  test-session-wire:
+    name: Test framed verified sessions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and test wire framing and ACK NACK
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c protocol/image_integrity.c \
+            protocol/verified_session.c protocol/session_wire.c \
+            tests/test_session_wire.c -o /tmp/test-session-wire
+          /tmp/test-session-wire
