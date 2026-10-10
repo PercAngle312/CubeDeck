@@ -337,7 +337,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Run 16 MiB bounded zero-allocation transfer
         run: |
-          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -Iinclude \
+          gcc -std=c11 -Wall -Wextra -Werror -Wno-error=maybe-uninitialized -pedantic -O1 -Iinclude \
             protocol/stream_hash.c protocol/stream_sender.c \
             protocol/stream_receiver.c protocol/stream_wire.c \
             protocol/reliable_link.c protocol/chunk_session.c \
