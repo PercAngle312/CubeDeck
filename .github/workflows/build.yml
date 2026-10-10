@@ -104,3 +104,17 @@ jobs:
             protocol/reliable_link.c protocol/image_integrity.c \
             tests/test_image_integrity.c -o /tmp/test-image-integrity
           /tmp/test-image-integrity
+
+  test-verified-session:
+    name: Test manifest-verified transfers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile and run manifest session tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/image_integrity.c protocol/verified_session.c \
+            tests/test_verified_session.c -o /tmp/test-verified-session
+          /tmp/test-verified-session
