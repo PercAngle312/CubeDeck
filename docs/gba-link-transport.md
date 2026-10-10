@@ -1,6 +1,6 @@
 # CubeDeck GBA Link Transport — Implementation Notes
 
-Status: **Physical-hardware verified: GBA detection, one two-way diagnostic exchange, and a 16-round sequential-word stress test (16/16 valid replies).** This validates repeated Joybus request/reply transactions, not bulk ROM transfer.
+Status: **Physical-hardware verified: GBA detection, 16/16 repeated Joybus replies, and a complete six-word sample packet validated on the GBA (cyan screen, CRC32 and seven payload bytes).** This does not establish bulk ROM transfer.
 
 ## Confirmed hardware path
 
@@ -16,7 +16,7 @@ Prior art:
 
 1. `SI_GetTypeAsync(1, callback)` detects the GBA on GameCube Port 2.
 2. A diagnostic word exchange changed the GBA screen and returned the expected GameCube reply `B76E6ABB`.
-3. The maintainer ran the 16-round sequential-word test on physical hardware; all **16/16 replies passed**.
+3. The maintainer ran the 16-round sequential-word test on physical hardware; all **16/16 replies passed**.\n4. The maintainer reported **6/6** acknowledgments, final CRC word `5DD2BACF`, XOR reply `F888860C`, and **cyan GBA screen** using the new packet parser, establishing end-to-end validation of the seven-byte sample packet.
 
 The stress test validates a short sequence of independent words. It does not yet validate large payloads, sustained transfer, cartridge reads, ROM loading, save access, or TV playback.
 
@@ -24,7 +24,7 @@ The stress test validates a short sequence of independent words. It does not yet
 
 `gba-diagnostic/main.c` is a standalone GBA ROM intended for a flashcart. It switches the GBA link port into Joybus mode, prepares a deterministic XOR response, and visibly changes screen color after each received word. It does not read or write cartridge ROM/save memory.
 
-The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, send-word, and read-reply. It uses bounded frame timeouts and does not busy-wait on SI. The 16-round test is started with Y; X runs one round; A sends a host-encoded sample packet word-by-word. The A test verifies the XOR acknowledgement for each packet word, but the current GBA diagnostic does not parse the packet or independently validate its CRC.
+The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, send-word, and read-reply. It uses bounded frame timeouts and does not busy-wait on SI. The 16-round test is started with Y; X runs one round; A sends a host-encoded sample packet word-by-word. The A test verifies each XOR acknowledgment, while the current GBA diagnostic also decodes the full sample packet, checks CRC32 and its seven payload bytes, and displays cyan on success.
 
 ## Transport constraints and design rules
 
@@ -47,4 +47,4 @@ The GameCube sender uses callback-driven `SI_Transfer` calls for RESET, STATUS, 
 
 ## Validation policy
 
-Keep the known-working GameCube video initialization and framebuffer stride untouched. Build GameCube and GBA components with separate toolchains. CI success proves compilation/artifact creation only. Record hardware milestones only after real request/response or data-integrity evidence.
+Keep the known-working GameCube video initialization and framebuffer stride untouched. Minimize hardware testing; group changes into meaningful hardware milestones. Keep GCMCE disconnected while the earlier unexplained memory-card incident remains unresolved. Build GameCube and GBA components with separate toolchains. CI success proves compilation/artifact creation only. Record hardware milestones only after real request/response or data-integrity evidence.
