@@ -314,3 +314,17 @@ jobs:
             protocol/stream_hash.c protocol/image_integrity.c \
             tests/test_stream_hash.c -o /tmp/test-stream-hash
           /tmp/test-stream-hash
+
+  test-transfer-segments:
+    name: Test 32 MiB sequence-safe segment plan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Validate bounded multi-session image layout
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transfer_segments.c tests/test_transfer_segments.c \
+            -o /tmp/test-transfer-segments
+          /tmp/test-transfer-segments
