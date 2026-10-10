@@ -32,8 +32,11 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Install GBA development libraries
-        run: dkp-pacman -S --noconfirm gba-dev
+      - name: Install libgba
+        run: |
+          dkp-pacman -Syu --noconfirm
+          dkp-pacman -S --noconfirm libgba
+          test -f "$DEVKITPRO/libgba/include/gba.h"
       - name: Build GBA diagnostic ROM
         run: make -C gba-diagnostic clean all
       - name: Upload GBA diagnostic artifact
