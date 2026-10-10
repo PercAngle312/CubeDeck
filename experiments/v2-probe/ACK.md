@@ -78,3 +78,23 @@ decoder**, **9=SEND verdict query**, **10=READ verdict**.
 This is a diagnostic revision, not a confirmed fix for the second
 hardware failure. Use a **new** GameCube ACK artifact produced after the
 diagnostics change; the GBA ACK image is unchanged. No cart/save writes.
+
+## Physical restart / retry observation (2026-10-10)
+
+The user explicitly clarified that **without copying any new files or changing
+the binaries**, they fully restarted both the GameCube and the GBA, reran the
+previously failing experimental ACK/NACK test, and reported **everything
+passed** (including a preceding report of "3"). The success therefore
+belongs to the **existing installed ACK/NACK pair**, not to a later
+diagnostic build or any SD-card replacement. The exact GameCube retry count
+and GBA color for that run were not fully transcribed in the clarification;
+do not promote this observation to independently proven forced-NACK
+retransmission unless the visible retry count and acceptance result are
+confirmed.
+
+The earlier failure might be a transient startup / GBA Joybus state or
+timing problem, but the root cause has **not** been isolated. A cold restart
+appeared to recover the setup on the same code. Preserve the known-good
+three-frame cyan files and avoid asserting that diagnostic changes caused
+this success. Future work should focus on robust startup synchronization,
+sequential session reset and real-hardware repeatability.
