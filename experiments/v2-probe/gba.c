@@ -50,10 +50,8 @@ static void joybus_irq(void)
         write_transmit_word(reply_value);
         ++received_count;
         if (!packet_ready) {
-            if (word == CDTP_MAGIC) {
-                packet_count = 0;
-                packet_expected = 0;
-            }
+            /* Never treat magic inside an active payload as a restart.
+             * The portable parser has this invariant too. */
             if (packet_count != 0 || word == CDTP_MAGIC) {
                 unsigned int index = packet_count;
                 if (index < CDTP_MAX_PACKET_WORDS) {
@@ -103,7 +101,7 @@ int main(void)
     uint32_t shown_count = 0;
     uint32_t decoded_words[CDTP_MAX_PACKET_WORDS];
     cdgu_message decoded_packet;
-    int packet_result = 0; /* cyan: accepted v2 probe; red: rejected */
+    int packet_result = 0; /* 0 = accumulating, otherwise terminal */
     for (;;) {
         uint32_t count = received_count;
         if (count != shown_count && packet_result == 0) {
@@ -128,24 +126,37 @@ int main(void)
             packet_expected = 0;
             packet_ready = 0;
             REG_IME = old_ime;
-            status = cdgu_decode(decoded_words, n, CDV2_PROBE_ID,
-                                 &decoded_packet);
-            if (status == 0 &&
-                decoded_packet.opcode == 1u &&
-                decoded_packet.sequence == 1u &&
-                decoded_packet.payload_length == 7u &&
-                decoded_packet.payload[0] == 0x43u &&
-                decoded_packet.payload[1] == 0x44u &&
-                decoded_packet.payload[2] == 0x42u &&
-                decoded_packet.payload[3] == 0x4Bu &&
-                decoded_packet.payload[4] == 0x10u &&
-                decoded_packet.payload[5] == 0x20u &&
-                decoded_packet.payload[6] == 0x30u) {
-                packet_result = 1;
-                paint_screen(RGB5(0, 31, 31)); /* cyan = verified */
-            } else {
-                packet_result = -1;
-                paint_screen(RGB5(31, 0, 0)); /* red = invalid */
+            /* Diagnose each layer separately. "7/7 acknowledged" on
+             * GameCube only proves per-word XOR replies, not CRC decoding. */
+            {
+                cdtp_packet transport;
+                status = cdtp_decode(decoded_words, n, &transport);
+                if (status != CDTP_OK) {
+                    packet_result = -1;
+                    if (status == CDTP_ERR_CRC)
+                        paint_screen(RGB5(31, 0, 31)); /* magenta: CRC */
+                    else
+                        paint_screen(RGB5(31, 12, 0)); /* orange: framing */
+                } else if (cdgu_decode(decoded_words, n, CDV2_PROBE_ID,
+                                       &decoded_packet) != 0) {
+                    packet_result = -2;
+                    paint_screen(RGB5(0, 0, 31)); /* blue: session or v2 */
+                } else if (decoded_packet.opcode != 1u ||
+                           decoded_packet.sequence != 1u ||
+                           decoded_packet.payload_length != 7u ||
+                           decoded_packet.payload[0] != 0x43u ||
+                           decoded_packet.payload[1] != 0x44u ||
+                           decoded_packet.payload[2] != 0x42u ||
+                           decoded_packet.payload[3] != 0x4Bu ||
+                           decoded_packet.payload[4] != 0x10u ||
+                           decoded_packet.payload[5] != 0x20u ||
+                           decoded_packet.payload[6] != 0x30u) {
+                    packet_result = -3;
+                    paint_screen(RGB5(31, 0, 0)); /* red: app sample */
+                } else {
+                    packet_result = 1;
+                    paint_screen(RGB5(0, 31, 31)); /* cyan: verified */
+                }
             }
         }
         VBlankIntrWait();
