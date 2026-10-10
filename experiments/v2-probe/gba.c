@@ -106,12 +106,14 @@ int main(void)
         uint32_t count = received_count;
         if (count != shown_count && packet_result == 0) {
             shown_count = count;
-            /* Use unmistakably different colors so a received word is visible. */
+            /* Neutral gray indicates raw words arriving, not a finished
+             * CRC/session verdict. Error and success colors are reserved
+             * exclusively for a completed frame. */
             switch (count & 3u) {
-                case 1: paint_screen(RGB5(31, 0, 0)); break;  /* red */
-                case 2: paint_screen(RGB5(0, 31, 0)); break;  /* green */
-                case 3: paint_screen(RGB5(31, 31, 0)); break; /* yellow */
-                default: paint_screen(RGB5(31, 0, 31)); break; /* magenta */
+                case 1: paint_screen(RGB5(7, 7, 7)); break;
+                case 2: paint_screen(RGB5(12, 12, 12)); break;
+                case 3: paint_screen(RGB5(17, 17, 17)); break;
+                default: paint_screen(RGB5(22, 22, 22)); break;
             }
         }
         if (packet_ready) {
