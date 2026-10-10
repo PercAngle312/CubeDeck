@@ -122,3 +122,9 @@ NACKs still use zero payload and report the next sequence expected by the receiv
 ## Full streaming session through two word parsers (host only)
 
 `tests/test_stream_word_link.c` runs a **65,539-byte** manifest/DATA/FINISH exchange through the bounded sender, 32-bit-word packet encoder, incoming incremental parser, RAM-only streaming receiver, ACK generator, outgoing incremental parser and sender reply checker. The simulation injects a damaged data CRC, a truncated frame with explicit parser timeout/reset, and a lost ACK that forces an exactly duplicated DATA replay. It checks final bytes and CRC, all without touching the GameCube or GBA runtime paths. This is an additional **host-only** integration milestone, not proof of physical bulk-link operation.
+
+## Constant-memory manifest CRC preflight
+
+`protocol/stream_hash.c` adds `cdsh_source_crc32`, which computes IEEE CRC32 over any supported source size via the same read-only callback used by the streaming sender, in **256-byte increments**. This supplies the manifest's expected CRC without first allocating an image-sized buffer. Its host-only test compares against the reference full-buffer CRC for boundary lengths up to 131,077 bytes and checks callback failure without publishing a partial checksum.
+
+The caller must guarantee the source remains identical between the preflight hash pass and transmission. This is still callback infrastructure only: no implementation reads cartridge pins, saves, Swiss SD files, or memory cards.
