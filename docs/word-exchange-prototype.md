@@ -17,8 +17,8 @@ firmware, timers, filesystem or cartridge slots:
   acknowledgment.
 - `cdwx_timeout` resets the reply parser and replays the cached *identical*
   outgoing frame, counting against the sender's bounded retry budget.
-- A current-session, sequence-matching NACK triggers an immediate resend of
-  the cached outgoing frame. The NACK itself has already consumed one retry;
+- A current-session, sequence- and opcode-matching NACK triggers an immediate resend of
+  the cached outgoing frame. Version 2 NACKs carry the rejected request opcode in a one-byte payload, preventing a delayed MANIFEST NACK for sequence zero from causing a spurious DATA(0) retry. The NACK itself has already consumed one retry;
   the scheduler does not charge a second retry. An unrelated session's NACK
   cannot trigger retransmission.
 
