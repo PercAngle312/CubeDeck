@@ -45,3 +45,28 @@ Check the GBA's cyan result separately.
   safely remains future work.
 
 The normal `cubedeck.dol` and `cubedeck-gba-diagnostic.gba` are unchanged.
+
+## GBA status colors (diagnostic build)
+
+The updated experimental GBA build uses **gray shades** while raw words
+arrive. Only after a complete candidate packet is captured does it show
+a terminal result:
+
+- **Cyan:** valid v2 frame, matching transfer ID, matching seven-byte sample
+- **Magenta:** packet CRC mismatch
+- **Orange:** malformed packet layout, length or version
+- **Blue:** CRC is valid but v2 opcode marker or transfer ID is wrong
+- **Red:** CRC and session are valid but opcode, sequence or sample differs
+
+If the GBA remains **gray**, it never captured a complete frame. If the
+GameCube shows 7/7 XOR replies but the GBA is gray, the physical transport
+may have missed a packet-start marker or failed to reach main-loop decode.
+This diagnostic is not a test of actual game-cartridge transfer.
+
+**Important:** The older `cubedeck-gba-diagnostic.gba` does not support
+the v2 marker or extra four-byte transfer ID. With the experimental
+GameCube DOL it can acknowledge all seven words and then reject the sample.
+Use the artifact explicitly named `cubedeck-v2-probe-gba`, extracted from
+the **same workflow run** as the experimental GameCube DOL. On flashcarts,
+verify the launched filename corresponds to that experimental ROM rather
+than a previously cached diagnostic.
