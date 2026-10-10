@@ -460,3 +460,22 @@ jobs:
             protocol/word_exchange.c tests/test_word_exchange.c \
             -o /tmp/test-word-exchange
           /tmp/test-word-exchange
+
+  test-word-exchange-fault-matrix:
+    name: Test word exchange recovery fault matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Simulate damaged, missing and truncated replies
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/chunk_session.c \
+            protocol/reliable_link.c protocol/image_integrity.c \
+            protocol/packet_stream.c protocol/stream_receiver.c \
+            protocol/stream_sender.c protocol/stream_wire.c \
+            protocol/session_guard.c protocol/bound_stream.c \
+            protocol/word_exchange.c tests/test_word_exchange_fault_matrix.c \
+            -o /tmp/test-word-exchange-fault-matrix
+          /tmp/test-word-exchange-fault-matrix
