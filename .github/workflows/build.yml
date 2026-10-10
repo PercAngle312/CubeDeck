@@ -1,4 +1,3 @@
-
 name: Build CubeDeck
 
 on:
@@ -6,23 +5,40 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-gamecube:
+    name: Build GameCube app
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
-
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-
       - name: Build GameCube DOL
         run: make clean && make
-
-      - name: Upload build artifact
+      - name: Upload GameCube artifact
         uses: actions/upload-artifact@v4
         with:
           name: cubedeck-gamecube
           path: |
             cubedeck.dol
             cubedeck.elf
+          if-no-files-found: error
+
+  build-gba-diagnostic:
+    name: Build GBA diagnostic ROM
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build GBA diagnostic ROM
+        run: make -C gba-diagnostic clean all
+      - name: Upload GBA diagnostic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-gba-diagnostic
+          path: |
+            gba-diagnostic/cubedeck-gba-diagnostic.gba
+            gba-diagnostic/cubedeck-gba-diagnostic.elf
           if-no-files-found: error
