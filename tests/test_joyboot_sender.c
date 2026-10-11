@@ -26,6 +26,17 @@ int main(void)
     assert(cd_jb_sender_complete(&sender, id, 0u, 7u) == 0);
     assert(sender.phase == 3 && sender.acknowledged_words == 128u);
     assert(cd_jb_sender_prepare(&sender, 8u, 20u, transfer, &id) == -1);
+    assert(cd_jb_sender_final_reply(&sender, 0) == -1);
+    assert(sender.phase == -1);
+    assert(cd_jb_sender_init(&sender, image, sizeof(image), 0u) == 0);
+    while (sender.phase == 1 || sender.phase == 2) {
+        assert(cd_jb_sender_prepare(&sender, 10u, 20u, transfer, &id) == 0);
+        assert(cd_jb_sender_complete(&sender, id, 0u, 11u) == 0);
+    }
+    assert(sender.phase == 3);
+    assert(cd_jb_sender_final_reply(&sender, 1) == 0);
+    assert(sender.phase == 4);
+    assert(cd_jb_sender_final_reply(&sender, 1) == -1);
     assert(cd_jb_sender_init(&sender, image, sizeof(image), 0u) == 0);
     assert(cd_jb_sender_prepare(&sender, 10u, 5u, transfer, &id) == 0);
     assert(cd_jb_sender_poll(&sender, 15u) == -1);
