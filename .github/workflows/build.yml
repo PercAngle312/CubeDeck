@@ -975,3 +975,15 @@ jobs:
           arm-none-eabi-gcc -std=c11 -Wall -Wextra -Werror -pedantic -mthumb \
             -Iinclude -Iexperiments/cartridge-probe -c \
             experiments/cartridge-probe/gba_rom_reader.c -o /tmp/gba-rom-reader.o
+
+  test-gba-multiboot-plan:
+    name: Test bounded GBA multiboot image planning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check candidate image lengths and fixed header
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
+            tests/test_gba_multiboot_plan.c -o /tmp/test-gba-multiboot-plan
+          /tmp/test-gba-multiboot-plan
