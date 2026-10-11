@@ -7,9 +7,15 @@ int main(void)
 {
     uint8_t image[0x208u];
     cd_jb_words s, saved;
-    uint32_t word, finish, first_payload;
+    uint32_t word, finish, first_payload, client_key;
     unsigned int i;
     for (i = 0u; i < sizeof(image); ++i) image[i] = (uint8_t)i;
+    assert(cd_jb_client_key(0x200u, &client_key) == 0);
+    assert(cd_jb_client_key(0x201u, &word) == 0);
+    assert(word != client_key);
+    assert(cd_jb_client_key(0x1ffu, &word) == -1);
+    assert(cd_jb_client_key(0x40000u, &word) == -1);
+    assert(cd_jb_client_key(0x200u, NULL) == -1);
     assert(cd_jb_words_init(&s, 0x12345678u, 0x200u) == 0);
     assert(cd_jb_finish(&s, &finish) == -1);
     assert(cd_jb_next(image, sizeof(image), &s, &word) == 0);
