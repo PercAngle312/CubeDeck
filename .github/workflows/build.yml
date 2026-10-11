@@ -1130,7 +1130,14 @@ jobs:
       - name: Link standalone read-only SD multiboot uploader
         run: |
           set -eu
-          pacman -Q libogc libfat-ogc || pacman -Q | grep -E "libogc|libfat"
+          if command -v dkp-pacman >/dev/null 2>&1; then
+            dkp-pacman -Q | grep -E 'libogc|libfat'
+          elif test -x /opt/devkitpro/pacman/bin/pacman; then
+            /opt/devkitpro/pacman/bin/pacman -Q | grep -E 'libogc|libfat'
+          else
+            echo 'Package versions unavailable; recording linked library fingerprints.'
+          fi
+          sha256sum "$DEVKITPRO/libogc/lib/cube/libfat.a" "$DEVKITPRO/libogc/lib/cube/libogc.a"
           mkdir -p experiments/cartridge-probe/out
           powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
             -DCUBEDECK_SD_ONLY -mogc -mcpu=750 -meabi -mhard-float \
