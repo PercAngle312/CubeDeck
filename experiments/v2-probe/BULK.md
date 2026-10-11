@@ -85,3 +85,7 @@ The preceding three-packet recovery and startup pairs have
 [actual Dolphin execution evidence](EMULATOR.md). That evidence does not
 by itself validate this new 1 KiB pair. Physical testing remains pending
 until the user has hardware available again.
+
+The exact 1 KiB CI pair now has [Dolphin execution evidence](BULK_EMULATOR.md)
+for one image, four fresh sessions, startup/packet/partial-image interruption
+and an emulated GBA reboot. This does not change its physical validation status.

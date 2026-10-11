@@ -18,7 +18,8 @@ source commit `1f8f27de65c8b06491804afb31b5dee9e8f2e576` (46/46 CI jobs passed):
 | cubedeck-v2-startup-gba | cubedeck-v2-startup.gba | `9943414bef30d1c66b40a6758a05fe6db7aa329d6c0eeef82cd77aded7960a30` |
 
 No CubeDeck code or binaries were changed for these runs. These results
-precede the separate 1 KiB module; they do not validate its new pair. The original
+precede the separate 1 KiB module; they do not validate its new pair.
+That pair has its own [execution record](BULK_EMULATOR.md). The original
 ACK, multiframe and single-frame targets were not executed in this record.
 
 ## Observed execution
