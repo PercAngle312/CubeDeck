@@ -1168,7 +1168,10 @@ jobs:
             -tCDJOYPROBE -cCDJB -m01
           # GameCube uploader requires 16-byte alignment, and the final
           # file must match the size used to derive the Joyboot client key.
-          python3 -c 'from pathlib import Path; p=Path("experiments/cartridge-probe/out/joyboot-probe.gba"); b=p.read_bytes(); p.write_bytes(b + bytes((-len(b)) % 16))'
+          gba_file=experiments/cartridge-probe/out/joyboot-probe.gba
+          gba_size=$(stat -c %s "$gba_file")
+          aligned_size=$(( (gba_size + 15) / 16 * 16 ))
+          truncate -s "$aligned_size" "$gba_file"
           test "$(( $(stat -c %s experiments/cartridge-probe/out/joyboot-probe.gba) % 16 ))" -eq 0
           test "$(stat -c %s experiments/cartridge-probe/out/joyboot-probe.gba)" -ge 512
           test "$(stat -c %s experiments/cartridge-probe/out/joyboot-probe.gba)" -le 261952
