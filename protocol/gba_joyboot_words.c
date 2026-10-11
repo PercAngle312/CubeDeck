@@ -49,7 +49,7 @@ int cd_jb_next(const uint8_t *image, size_t capacity, cd_jb_words *s,
         value = le32(b);
         s->crc = crc_step(s->crc, value);
         s->key = s->key * 0x6177614bu + 1u;
-        value ^= s->key ^ (0xffe00000u - i) ^ 0x20796220u;
+        value ^= s->key ^ (0xfe000000u - i) ^ 0x20796220u;
     }
     s->offset += 4u;
     *out = value;
@@ -61,7 +61,7 @@ int cd_jb_finish(cd_jb_words *s, uint32_t *out)
     if (!s || !out || s->offset != s->padded_length) return -1;
     result = s->crc | (s->padded_length << 16);
     s->key = s->key * 0x6177614bu + 1u;
-    result ^= s->key ^ (0xffe00000u - s->offset) ^ 0x20796220u;
+    result ^= s->key ^ (0xfe000000u - s->offset) ^ 0x20796220u;
     *out = result;
     return 0;
 }
