@@ -5,7 +5,11 @@
 #include "cubedeck/joybus_recovery.h"
 #include "startup_fixture.h"
 #ifdef CUBEDECK_RECOVERY_PACKETS
+#ifdef CUBEDECK_BULK_TRANSFER
+#include "bulk_adapter.h"
+#else
 #include "recovery_packet.h"
+#endif
 static cdrp_tx packet_tx;
 #define PEER_READY CDRP_READY
 #else
@@ -198,25 +202,47 @@ int main(int argc, char **argv)
         if ((down & (PAD_BUTTON_A | PAD_BUTTON_Y)) && !running &&
             !owned && !data_error && link.error != CDJR_ERR_TIMEOUT) {
             passed = 0u;
+#ifdef CUBEDECK_BULK_TRANSFER
+            target = (down & PAD_BUTTON_Y) ? 4u : 1u;
+#else
             target = (down & PAD_BUTTON_Y) ? 16u : 1u;
+#endif
             begin_session();
         }
         service();
 #ifdef CUBEDECK_RECOVERY_PACKETS
+#ifdef CUBEDECK_BULK_TRANSFER
+        printf("\x1b[2J\x1b[2;2HCUBEDECK 1 KiB RAM TRANSFER - UNVALIDATED\n\n");
+        printf("  A: 1 KiB transfer   Y: 4 fresh sessions   B: interrupt\n");
+#else
         printf("\x1b[2J\x1b[2;2HCUBEDECK RECOVERY ACK - UNVALIDATED\n\n");
         printf("  A: three packets   Y: 16 fresh sessions   B: interrupt\n");
+#endif
         printf("  Phase: %u   Startup error: %u   Data error: %u\n",
                (unsigned int)link.phase, (unsigned int)link.error, data_error);
         printf("  Session: %lu   Ready reads: %u/%u\n",
                (unsigned long)link.generation, link.sync_attempts, SYNC_ATTEMPTS);
+#ifdef CUBEDECK_BULK_TRANSFER
+        printf("  Chunks: %u/16  Bytes: %u/1024  Retries: %u\n",
+               packet_tx.accepted, packet_tx.accepted * CDBR_CHUNK_BYTES,
+               packet_tx.recoveries);
+        printf("  Whole RAM CRC accepted: %08lX\n",
+               (unsigned long)(packet_tx.phase == CDRP_TX_DONE ? CDBR_IMAGE_CRC : 0u));
+#else
         printf("  Verified: %u/3   Retries: %u   TX phase: %u\n",
                packet_tx.accepted, packet_tx.recoveries, (unsigned int)packet_tx.phase);
+#endif
         printf("  Sessions: %u/%u   Owned SI: %u   Interrupted: %u\n",
                passed, target, owned, interrupted);
         printf("  SI result: %08lX   Reply: %08lX\n",
                (unsigned long)last_si_result, (unsigned long)last_reply);
+#ifdef CUBEDECK_BULK_TRANSFER
+        printf("  Use ONLY cubedeck-v2-bulk.gba companion on Port 2.\n");
+        printf("  Cyan: all 16 chunks AND whole 1024-byte RAM CRC verified\n");
+#else
         printf("  Use ONLY cubedeck-v2-recovery.gba companion on Port 2.\n");
         printf("  Blue: ready  Green: ACK  Yellow/red: NACK  Cyan: 3 CRC packets\n");
+#endif
         printf("  Timeout/data error: relaunch; pending buffers never reused.\n");
         printf("  RAM fixture only; no cartridge/save/storage operations.\n");
 #else

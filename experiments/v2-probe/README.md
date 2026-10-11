@@ -85,3 +85,7 @@ not reliable multi-frame transmission, cartridge ROM access, save access,
 run-time emulator linkage, or repeated-session negotiation. Do not modify
 or replace the known-good diagnostic; treat later bulk-link tests as separate
 opt-in experiments and keep storage disconnected while investigating safety.
+
+The separate [1 KiB RAM transfer](BULK.md) scales the recovery adapter to
+16 chunks with full stored-image CRC acceptance. Existing targets stay
+separate. [Emulator evidence](EMULATOR.md) is distinct from hardware results.

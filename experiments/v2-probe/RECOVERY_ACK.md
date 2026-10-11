@@ -107,6 +107,15 @@ The new tests, existing startup tests and storage audit run in CI. Both DOL
 and GBA ROM build with warnings treated as errors. These are simulations and
 cross-compilation, not measurements of physical Joybus timing.
 
+## Emulator execution
+
+The exact pair from source commit `1f8f27d` has now run in Dolphin +
+integrated mGBA: one session, a 16/16 fresh-session loop, and four
+interruption/restart checks passed. Completed sessions showed 3/3,
+Retries 1 and GBA cyan. See [EMULATOR.md](EMULATOR.md) for artifact hashes,
+screenshots, emulator modifications and the limits of these results. This
+does not validate physical hardware or forced SI hangs.
+
 ## Later physical test — user is currently away
 
 When hardware is available, keep GCMCE disconnected and preserve all proven

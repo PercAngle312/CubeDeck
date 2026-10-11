@@ -128,3 +128,29 @@ $(OUT)/cubedeck-v2-recovery-arm.elf: experiments/v2-probe/gba-recovery.c $(PROTO
 $(OUT)/cubedeck-v2-recovery.gba: $(OUT)/cubedeck-v2-recovery-arm.elf
 	$(ARMOBJ) -O binary $< $@
 	$(GBAFIX) $@ -tCDBKRECOVERY -cCDRC -m01
+
+# Separate 1 KiB RAM-only transfer: does not link the three-packet fixture.
+BULK := experiments/v2-probe/bulk_packet.c
+BULK_HDR := experiments/v2-probe/bulk_packet.h experiments/v2-probe/bulk_adapter.h
+.PHONY: bulk-gamecube bulk-gba
+bulk-gamecube: $(OUT)/cubedeck-v2-bulk.dol
+bulk-gba: $(OUT)/cubedeck-v2-bulk.gba
+
+$(OUT)/cubedeck-v2-bulk.elf: experiments/v2-probe/gamecube-bulk.c experiments/v2-probe/gamecube-startup.c protocol/joybus_recovery.c include/cubedeck/joybus_recovery.h $(PROTO) $(BULK) $(BULK_HDR) experiments/v2-probe/startup_fixture.h | $(OUT)
+	$(PPC) -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  experiments/v2-probe/gamecube-bulk.c protocol/joybus_recovery.c $(PROTO) $(BULK) \
+	  -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-bulk.dol: $(OUT)/cubedeck-v2-bulk.elf
+	$(ELF2DOL) $< $@
+
+$(OUT)/cubedeck-v2-bulk-arm.elf: experiments/v2-probe/gba-bulk.c experiments/v2-probe/gba-recovery.c $(PROTO) $(BULK) $(BULK_HDR) | $(OUT)
+	$(ARM) -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+	  -I$(DEVKITPRO)/libgba/include -Iinclude -specs=gba.specs \
+	  experiments/v2-probe/gba-bulk.c $(PROTO) $(BULK) \
+	  -L$(DEVKITPRO)/libgba/lib -lgba -o $@
+
+$(OUT)/cubedeck-v2-bulk.gba: $(OUT)/cubedeck-v2-bulk-arm.elf
+	$(ARMOBJ) -O binary $< $@
+	$(GBAFIX) $@ -tCDBK1KRAM -cCDBR -m01

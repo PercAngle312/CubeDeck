@@ -1,6 +1,10 @@
 #include <gba.h>
 #include <stdint.h>
+#ifdef CUBEDECK_BULK_TRANSFER
+#include "bulk_adapter.h"
+#else
 #include "recovery_packet.h"
+#endif
 
 #define CDRP_JOYCNT (*(volatile uint16_t *)0x04000140)
 #define CDRP_RECV_L (*(volatile uint16_t *)0x04000150)
