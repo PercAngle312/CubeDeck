@@ -1034,3 +1034,15 @@ jobs:
             protocol/gba_joyboot_words.c tests/test_gba_joyboot_words.c \
             -o /tmp/test-gba-joyboot-words
           /tmp/test-gba-joyboot-words
+
+  test-joyboot-si-queue:
+    name: Test isolated Joyboot SI ownership
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test callback ownership and terminal timeouts
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/joyboot_si_queue.c tests/test_joyboot_si_queue.c \
+            -o /tmp/test-joyboot-si-queue
+          /tmp/test-joyboot-si-queue
