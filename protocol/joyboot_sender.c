@@ -62,9 +62,30 @@ int cd_jb_sender_poll(cd_jb_sender *s, uint32_t now)
     return 0;
 }
 
+int cd_jb_sender_prepare_final_read(cd_jb_sender *s, uint32_t now,
+                                    uint32_t timeout, uint32_t *generation)
+{
+    if (!s || !generation || s->phase != 3 || s->final_read_done) return -1;
+    if (cd_js_begin(&s->queue, 0x14u, now, timeout) != 0) return -1;
+    s->pending_generation = s->queue.generation;
+    *generation = s->pending_generation;
+    return 0;
+}
+int cd_jb_sender_complete_final_read(cd_jb_sender *s, uint32_t generation,
+                                     uint32_t si_result, uint32_t now)
+{
+    if (!s || s->phase != 3 || s->queue.command_word != 0x14u ||
+        generation != s->pending_generation) return -1;
+    if (cd_js_complete(&s->queue, generation, si_result, 0u, now) != 0) {
+        s->phase = -1;
+        return -1;
+    }
+    s->final_read_done = 1u;
+    return 0;
+}
 int cd_jb_sender_final_reply(cd_jb_sender *s, int validated_reply)
 {
-    if (!s || s->phase != 3 || s->queue.state != CD_JS_DONE)
+    if (!s || s->phase != 3 || !s->final_read_done || s->queue.state != CD_JS_DONE)
         return -1;
     if (!validated_reply) {
         s->phase = -1;
