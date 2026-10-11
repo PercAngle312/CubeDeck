@@ -1128,6 +1128,7 @@ jobs:
             experiments/cartridge-probe/probe_receiver.c \
             experiments/cartridge-probe/joyboot_si_adapter.c \
             protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
+            protocol/cart_probe_reply.c \
             protocol/gba_joyboot_words.c protocol/joyboot_si_queue.c \
             protocol/joyboot_sender.c \
             -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm \
