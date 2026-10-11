@@ -987,3 +987,15 @@ jobs:
             protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
             tests/test_gba_multiboot_plan.c -o /tmp/test-gba-multiboot-plan
           /tmp/test-gba-multiboot-plan
+
+  test-gba-multiboot-session:
+    name: Test fail-closed multiboot phase controller
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test stage transitions, failure and clock wrap
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_multiboot_session.c tests/test_gba_multiboot_session.c \
+            -o /tmp/test-gba-multiboot-session
+          /tmp/test-gba-multiboot-session
