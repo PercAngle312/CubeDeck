@@ -1610,3 +1610,34 @@ jobs:
             -o /tmp/test-ram-v10-link
           /tmp/test-ram-v10-link
 
+  build-ram-ping-v10-gamecube:
+    name: Build isolated v10 GameCube PING DOL
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p ram-v10
+          powerpc-eabi-gcc -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/gamecube-ram-ping-v10.c \
+            experiments/cartridge-probe/joyboot_upload_v10.c \
+            experiments/cartridge-probe/ram_v10_link.c \
+            experiments/cartridge-probe/joyboot_ready.c \
+            experiments/cartridge-probe/joyboot_si_adapter.c \
+            experiments/cartridge-probe/sd_mount.c \
+            experiments/cartridge-probe/sd_fat_volume.c \
+            experiments/cartridge-probe/sd_gpt.c \
+            protocol/image_integrity.c protocol/gba_cart_header.c \
+            protocol/gba_multiboot_plan.c protocol/joyboot_sender.c \
+            protocol/joyboot_si_queue.c protocol/gba_joyboot_words.c \
+            -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm \
+            -o ram-v10/upload.elf
+          elf2dol ram-v10/upload.elf ram-v10/cubedeck-ram-ping-v10.dol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-ping-v10-gamecube
+          path: ram-v10/cubedeck-ram-ping-v10.dol
+          if-no-files-found: error
+
