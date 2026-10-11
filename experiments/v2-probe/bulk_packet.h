@@ -6,7 +6,11 @@
  * Frame words travel as tagged low/high halves, so payload/CRC bits cannot
  * alias a session/restart/query marker. IDs are
  * 16-bit nonzero, never reused within one running GameCube process. */
+#ifdef CUBEDECK_RAM16_TRANSFER
+#define CDBR_READY 0x43535236u
+#else
 #define CDBR_READY 0x43425259u
+#endif
 #define CDBR_XOR 0xA55A3CC3u
 #define CDBR_SESSION 0x53000000u
 #define CDBR_FRAME 0x54000000u
@@ -17,14 +21,21 @@
 #define CDBR_NACK 0xBA000000u
 #define CDBR_PENDING 0xDE000000u
 #define CDBR_KEY(id, seq) (((uint32_t)(id) << 8) | (uint32_t)(seq))
+#ifdef CUBEDECK_RAM16_TRANSFER
+#define CDBR_TRANSFER(id) (0xB2CD0000u | (uint32_t)(id))
+#define CDBR_CHUNK_BYTES 128u
+#define CDBR_IMAGE_BYTES 16384u
+#define CDBR_IMAGE_CRC 0xE7638E98u
+#else
 #define CDBR_TRANSFER(id) (0xB1CD0000u | (uint32_t)(id))
 #define CDBR_CHUNK_BYTES 64u
 #define CDBR_IMAGE_BYTES 1024u
+#define CDBR_IMAGE_CRC 0x6E99AE3Au
+#endif
 #define CDBR_WORDS (CDTP_HEADER_WORDS + ((CDGU_SESSION_BYTES + CDBR_CHUNK_BYTES + 3u) / 4u) + 1u)
 #define CDBR_PACKETS (CDBR_IMAGE_BYTES / CDBR_CHUNK_BYTES)
 #define CDBR_RETRIES 2u
 #define CDBR_GAP 12u
-#define CDBR_IMAGE_CRC 0x6E99AE3Au
 uint8_t cdbr_expected_byte(size_t offset);
 
 typedef enum {

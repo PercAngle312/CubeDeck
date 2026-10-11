@@ -24,7 +24,7 @@ static void transfer(unsigned int mode, unsigned int position, uint32_t now)
     while (tx.phase != CDBR_TX_DONE && tx.phase != CDBR_TX_FAILED) {
         uint32_t word, response, delivered;
         int next;
-        assert(++iterations < 2000u);
+        assert(++iterations < CDBR_PACKETS * (CDBR_WORDS * 2u + CDBR_GAP + 8u) + 200u);
         next = cdbr_tx_next(&tx, now++, &word);
         assert(next >= 0);
         if (!next) continue;
@@ -259,6 +259,6 @@ int main(void)
         assert(peer.accepted == 1u);
     }
     puts("All 65535 usable fixture IDs preserve packet/control separation.");
-    printf("1 KiB RAM packets: %u corruption, interruption, replay and retry cases passed.\n", cases);
+    printf("%u-byte RAM packets: %u corruption, interruption, replay and retry cases passed.\n", CDBR_IMAGE_BYTES, cases);
     return 0;
 }

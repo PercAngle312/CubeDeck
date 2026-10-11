@@ -16,6 +16,10 @@
 #define CDRP_IRQ_ENABLE 64u
 /* Shared only under serial IRQ / REG_IME exclusion. CRC work uses snapshots. */
 static cdrp_peer peer;
+#ifdef CUBEDECK_RAM16_TRANSFER
+/* Avoid a 16 KiB snapshot on the small GBA IWRAM stack. */
+static cdrp_work work __attribute__((section(".ewram")));
+#endif
 static volatile uint32_t changed;
 static uint16_t lock_peer(void)
 {
@@ -66,7 +70,10 @@ int main(void)
     REG_DISPCNT = MODE_3 | BG2_ENABLE;
     uint32_t shown = UINT32_MAX;
     for (;;) {
+
+#ifndef CUBEDECK_RAM16_TRANSFER
         cdrp_work work;
+#endif
         cdrp_result result;
         uint16_t old_ime = lock_peer();
         int ready = cdrp_peer_take(&peer, &work);

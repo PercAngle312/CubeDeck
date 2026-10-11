@@ -212,8 +212,13 @@ int main(int argc, char **argv)
         service();
 #ifdef CUBEDECK_RECOVERY_PACKETS
 #ifdef CUBEDECK_BULK_TRANSFER
+#ifdef CUBEDECK_RAM16_TRANSFER
+        printf("\x1b[2J\x1b[2;2HCUBEDECK 16 KiB RAM TRANSFER - UNVALIDATED\n\n");
+        printf("  A: 16 KiB transfer   Y: 4 fresh sessions   B: interrupt\n");
+#else
         printf("\x1b[2J\x1b[2;2HCUBEDECK 1 KiB RAM TRANSFER - UNVALIDATED\n\n");
         printf("  A: 1 KiB transfer   Y: 4 fresh sessions   B: interrupt\n");
+#endif
 #else
         printf("\x1b[2J\x1b[2;2HCUBEDECK RECOVERY ACK - UNVALIDATED\n\n");
         printf("  A: three packets   Y: 16 fresh sessions   B: interrupt\n");
@@ -223,9 +228,15 @@ int main(int argc, char **argv)
         printf("  Session: %lu   Ready reads: %u/%u\n",
                (unsigned long)link.generation, link.sync_attempts, SYNC_ATTEMPTS);
 #ifdef CUBEDECK_BULK_TRANSFER
+#ifdef CUBEDECK_RAM16_TRANSFER
+        printf("  Chunks: %u/128  Bytes: %u/16384  Retries: %u\n",
+               packet_tx.accepted, packet_tx.accepted * CDBR_CHUNK_BYTES,
+               packet_tx.recoveries);
+#else
         printf("  Chunks: %u/16  Bytes: %u/1024  Retries: %u\n",
                packet_tx.accepted, packet_tx.accepted * CDBR_CHUNK_BYTES,
                packet_tx.recoveries);
+#endif
         printf("  Whole RAM CRC accepted: %08lX\n",
                (unsigned long)(packet_tx.phase == CDRP_TX_DONE ? CDBR_IMAGE_CRC : 0u));
 #else
@@ -237,8 +248,13 @@ int main(int argc, char **argv)
         printf("  SI result: %08lX   Reply: %08lX\n",
                (unsigned long)last_si_result, (unsigned long)last_reply);
 #ifdef CUBEDECK_BULK_TRANSFER
+#ifdef CUBEDECK_RAM16_TRANSFER
+        printf("  Use ONLY cubedeck-v2-ram16.gba companion on Port 2.\n");
+        printf("  Cyan: all 128 chunks AND whole 16384-byte RAM CRC verified\n");
+#else
         printf("  Use ONLY cubedeck-v2-bulk.gba companion on Port 2.\n");
         printf("  Cyan: all 16 chunks AND whole 1024-byte RAM CRC verified\n");
+#endif
 #else
         printf("  Use ONLY cubedeck-v2-recovery.gba companion on Port 2.\n");
         printf("  Blue: ready  Green: ACK  Yellow/red: NACK  Cyan: 3 CRC packets\n");

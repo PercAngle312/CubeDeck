@@ -89,3 +89,6 @@ opt-in experiments and keep storage disconnected while investigating safety.
 The separate [1 KiB RAM transfer](BULK.md) scales the recovery adapter to
 16 chunks with full stored-image CRC acceptance. Existing targets stay
 separate. [Emulator evidence](EMULATOR.md) is distinct from hardware results.
+
+The separate [16 KiB RAM transport beta](RAM16.md) uses distinct paired
+`ram16-gamecube` / `ram16-gba` targets; physical validation is pending.

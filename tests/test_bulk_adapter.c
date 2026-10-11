@@ -1,5 +1,9 @@
 #define CUBEDECK_STARTUP_HOST_TEST
+#ifdef CUBEDECK_RAM16_TRANSFER
+#include "../experiments/v2-probe/gamecube-ram16.c"
+#else
 #include "../experiments/v2-probe/gamecube-bulk.c"
+#endif
 #include <assert.h>
 
 static cdbr_peer fake_peer;
@@ -68,7 +72,7 @@ static void finish(void)
 {
     unsigned int limit = 0u;
     while (passed < target) {
-        assert(++limit < 5000u && !data_error && link.phase != CDJR_FAILED);
+        assert(++limit < target * CDBR_PACKETS * (CDBR_WORDS * 4u + CDBR_GAP + 16u) + 500u && !data_error && link.phase != CDJR_FAILED);
         advance();
     }
     assert(!owned && packet_tx.accepted == CDBR_PACKETS && packet_tx.recoveries == 1u);
@@ -83,10 +87,20 @@ int main(void)
     target = 2u;
     finish();
     unsigned int per_session = submissions / 2u;
-    assert(submissions % 2u == 0u && per_session == 1501u);
+    assert(submissions % 2u == 0u && per_session == 5u + (CDBR_PACKETS + 1u) * (CDBR_WORDS * 4u + 4u));
     /* Every SI operation in a full session is an interruption/watchdog/
      * rejection injection site, including verdict QUERY and READ. */
+    unsigned int sites = 0u;
     for (unsigned int operation = 1u; operation <= per_session; ++operation) {
+#ifdef CUBEDECK_RAM16_TRANSFER
+        /* Keep exhaustive 1 KiB coverage. For 16 KiB sample all startup
+         * operations, every frame boundary, midpoint, verdict and final read. */
+        unsigned int width = CDBR_WORDS * 4u + 4u;
+        unsigned int offset = operation > 5u ? (operation - 6u) % width : 0u;
+        if (operation > 5u && offset != 0u && offset != 1u &&
+            offset != width / 2u && offset < width - 4u) continue;
+#endif
+        sites += 4u;
         fresh();
         while (submissions < operation) advance();
         assert(owned && pending_callback);
@@ -128,10 +142,10 @@ int main(void)
     }
     fresh();
     no_worker = 1u; /* GBA never publishes a CRC verdict: bounded exhaustion */
-    for (unsigned int i = 0u; i < 500u && !data_error; ++i) advance();
+    for (unsigned int i = 0u; i < (CDBR_RETRIES + 1u) * (CDBR_WORDS * 4u + CDBR_GAP + 32u) + 100u && !data_error; ++i) advance();
     assert(data_error == 3u && packet_tx.phase == CDBR_TX_FAILED && !owned);
     assert(packet_tx.recoveries == CDBR_RETRIES && fake_peer.accepted == 0u);
-    printf("1 KiB SI adapter: 2 full sessions and %u operation fault sites passed.\n",
-           per_session * 4u);
+    printf("%u-byte SI adapter: 2 full sessions and %u operation fault sites passed.\n",
+           CDBR_IMAGE_BYTES, sites);
     return 0;
 }
