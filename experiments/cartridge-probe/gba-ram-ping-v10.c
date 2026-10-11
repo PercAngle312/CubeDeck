@@ -27,11 +27,8 @@ static void serial_irq(void) {
     }
     if (flags & 2u) {
         uint32_t value=(uint32_t)CD_RECV_LO|((uint32_t)CD_RECV_HI<<16);
-        uint16_t seq=cd_v10_sequence(value);
-        if (cd_v10_is_ping(value)) {
-            ++ping_count;
-            publish(cd_v10_ack(seq));
-        } else publish(cd_v10_error(seq));
+        if (cd_v10_is_ping(value)) ++ping_count;
+        publish(cd_v10_respond(value));
     }
     CD_JOYCNT=(uint16_t)(0x40u | (flags & 7u));
 }
