@@ -62,3 +62,9 @@ and interrupted-session draining. It is **not hardware validated** and tests
 synthetic session words rather than the ACK/NACK three-packet contract.
 See [startup/recovery experiment](experiments/v2-probe/STARTUP_RECOVERY.md)
 for separate artifact names and the later hardware test procedure.
+
+A further isolated [recovery ACK experiment](experiments/v2-probe/RECOVERY_ACK.md)
+combines that startup controller with per-wire-word echo, three v2 CRC-checked
+sample packets, session-bound verdicts, bounded retransmission and deferred
+CRC-result isolation. Its distinct `cubedeck-v2-recovery.dol`/`.gba` pair is
+**not hardware validated** and does not replace the proven ACK pair.

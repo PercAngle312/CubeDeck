@@ -102,3 +102,29 @@ $(OUT)/cubedeck-v2-startup-arm.elf: experiments/v2-probe/gba-startup.c experimen
 $(OUT)/cubedeck-v2-startup.gba: $(OUT)/cubedeck-v2-startup-arm.elf
 	$(ARMOBJ) -O binary $< $@
 	$(GBAFIX) $@ -tCDBKSTARTUP -cCDSR -m01
+
+# New recovery + CRC/ACK fixture; all earlier artifact filenames remain distinct.
+RECOVERY := experiments/v2-probe/recovery_packet.c
+RECOVERY_HDR := experiments/v2-probe/recovery_packet.h
+.PHONY: recovery-gamecube recovery-gba
+recovery-gamecube: $(OUT)/cubedeck-v2-recovery.dol
+recovery-gba: $(OUT)/cubedeck-v2-recovery.gba
+
+$(OUT)/cubedeck-v2-recovery.elf: experiments/v2-probe/gamecube-recovery.c experiments/v2-probe/gamecube-startup.c protocol/joybus_recovery.c include/cubedeck/joybus_recovery.h $(PROTO) $(RECOVERY) $(RECOVERY_HDR) experiments/v2-probe/startup_fixture.h | $(OUT)
+	$(PPC) -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  experiments/v2-probe/gamecube-recovery.c protocol/joybus_recovery.c $(PROTO) $(RECOVERY) \
+	  -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-recovery.dol: $(OUT)/cubedeck-v2-recovery.elf
+	$(ELF2DOL) $< $@
+
+$(OUT)/cubedeck-v2-recovery-arm.elf: experiments/v2-probe/gba-recovery.c $(PROTO) $(RECOVERY) $(RECOVERY_HDR) | $(OUT)
+	$(ARM) -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+	  -I$(DEVKITPRO)/libgba/include -Iinclude -specs=gba.specs \
+	  experiments/v2-probe/gba-recovery.c $(PROTO) $(RECOVERY) \
+	  -L$(DEVKITPRO)/libgba/lib -lgba -o $@
+
+$(OUT)/cubedeck-v2-recovery.gba: $(OUT)/cubedeck-v2-recovery-arm.elf
+	$(ARMOBJ) -O binary $< $@
+	$(GBAFIX) $@ -tCDBKRECOVERY -cCDRC -m01

@@ -4,6 +4,13 @@
 #include <string.h>
 #include "cubedeck/joybus_recovery.h"
 #include "startup_fixture.h"
+#ifdef CUBEDECK_RECOVERY_PACKETS
+#include "recovery_packet.h"
+static cdrp_tx packet_tx;
+#define PEER_READY CDRP_READY
+#else
+#define PEER_READY CDSR_READY
+#endif
 
 #define PORT 1
 #define WATCHDOG 120u
@@ -64,7 +71,16 @@ static int begin_session(void)
 {
     /* Never clear or reuse a descriptor just because the UI changed. */
     if (owned || data_error || cdjr_begin(&link, tick) != 0) return 0;
+#ifdef CUBEDECK_RECOVERY_PACKETS
+    /* Never reuse the 16-bit on-wire ID in this running process. */
+    if (cdrp_tx_init(&packet_tx, link.generation) != 0) {
+        cdjr_interrupt(&link);
+        data_error = 5u;
+        return 0;
+    }
+#else
     session_word = CDSR_WORD(link.generation);
+#endif
     data_stage = data_error = interrupted = 0u;
     running = 1u;
     return 1;
@@ -89,18 +105,29 @@ static void service(void)
         owned = 0u;
         IRQ_Restore(level);
         if (kind <= CDJR_READ_READY) {
-            cdjr_complete(&link, token, result, last_reply == CDSR_READY, when);
+            cdjr_complete(&link, token, result, last_reply == PEER_READY, when);
         } else if ((uint32_t)(when - owned_tick) >= WATCHDOG) {
             data_error = 1u;
         } else if (running && link.phase == CDJR_READY && !data_error) {
             if (result) data_error = 2u;
             else if (kind == 5u) data_stage = 2u;
+#ifdef CUBEDECK_RECOVERY_PACKETS
+            else {
+                if (cdrp_tx_reply(&packet_tx, last_reply, when) < 0) data_error = 3u;
+                data_stage = 0u;
+                if (packet_tx.phase == CDRP_TX_DONE) {
+                    ++passed;
+                    running = 0u;
+                }
+            }
+#else
             else if (last_reply != (session_word ^ CDSR_REPLY_XOR)) data_error = 3u;
             else {
                 data_stage = 3u;
                 ++passed;
                 running = 0u;
             }
+#endif
         }
     } else IRQ_Restore(level);
 
@@ -121,6 +148,11 @@ static void service(void)
     if (link.phase == CDJR_FAILED || data_error) running = 0u;
     if (running && link.phase == CDJR_READY && !owned) {
         if (data_stage == 0u) {
+#ifdef CUBEDECK_RECOVERY_PACKETS
+            int next = cdrp_tx_next(&packet_tx, tick, &session_word);
+            if (next < 0) data_error = 3u;
+            if (next != 1) return; /* verification gap: no SI ownership */
+#endif
             data_stage = 1u;
             if (!submit(0u, 5u, 0x15, 5u, 1u)) data_error = 4u;
         } else if (data_stage == 2u) {
@@ -170,6 +202,24 @@ int main(int argc, char **argv)
             begin_session();
         }
         service();
+#ifdef CUBEDECK_RECOVERY_PACKETS
+        printf("\x1b[2J\x1b[2;2HCUBEDECK RECOVERY ACK - UNVALIDATED\n\n");
+        printf("  A: three packets   Y: 16 fresh sessions   B: interrupt\n");
+        printf("  Phase: %u   Startup error: %u   Data error: %u\n",
+               (unsigned int)link.phase, (unsigned int)link.error, data_error);
+        printf("  Session: %lu   Ready reads: %u/%u\n",
+               (unsigned long)link.generation, link.sync_attempts, SYNC_ATTEMPTS);
+        printf("  Verified: %u/3   Retries: %u   TX phase: %u\n",
+               packet_tx.accepted, packet_tx.recoveries, (unsigned int)packet_tx.phase);
+        printf("  Sessions: %u/%u   Owned SI: %u   Interrupted: %u\n",
+               passed, target, owned, interrupted);
+        printf("  SI result: %08lX   Reply: %08lX\n",
+               (unsigned long)last_si_result, (unsigned long)last_reply);
+        printf("  Use ONLY cubedeck-v2-recovery.gba companion on Port 2.\n");
+        printf("  Blue: ready  Green: ACK  Yellow/red: NACK  Cyan: 3 CRC packets\n");
+        printf("  Timeout/data error: relaunch; pending buffers never reused.\n");
+        printf("  RAM fixture only; no cartridge/save/storage operations.\n");
+#else
         printf("\x1b[2J\x1b[2;2HCUBEDECK STARTUP EXPERIMENT - UNVALIDATED\n\n");
         printf("  Port 2: RESET > STATUS > ready signature > session echo\n");
         printf("  A: one session   Y: 16 fresh sessions   B: interrupt\n\n");
@@ -186,6 +236,7 @@ int main(int argc, char **argv)
         printf("\n  Use ONLY cubedeck-v2-startup.gba companion.\n");
         printf("  Blue: reset ready. Cyan: session word received.\n");
         printf("  RAM diagnostics only; no cartridge/save/storage I/O.\n");
+#endif
         VIDEO_WaitVSync();
         ++tick;
     }
