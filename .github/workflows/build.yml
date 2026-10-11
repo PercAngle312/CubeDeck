@@ -968,6 +968,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitarm:latest
+    env:
+      PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - name: Compile ARM header reader independently
@@ -1006,6 +1008,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - name: Compile independent GameCube discovery diagnostic
@@ -1066,6 +1070,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - name: Compile GameCube SI owner without altering main DOL
@@ -1081,6 +1087,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - name: Compile combined sender and native SI adapter
@@ -1098,6 +1106,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - name: Compile BIOS readiness and session-key adapter
@@ -1113,6 +1123,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - name: Link standalone read-only SD multiboot uploader
@@ -1146,8 +1158,16 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitarm:latest
+    env:
+      PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
+      - name: Install libgba (required by GBA probe)
+        run: |
+          git clone --depth 1 https://github.com/devkitPro/libgba.git /tmp/libgba
+          make -C /tmp/libgba
+          make -C /tmp/libgba install
+          test -f "$DEVKITPRO/libgba/include/gba.h"
       - name: Build GBA companion without proprietary assets
         run: |
           set -eu
