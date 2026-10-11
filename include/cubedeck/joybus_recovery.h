@@ -31,6 +31,9 @@ typedef struct {
     uint32_t started_tick;
     uint32_t last_callback_result;
     uint32_t timeout_ticks;
+    uint32_t settle_ticks;
+    uint32_t ready_tick;
+    unsigned int settling;
     unsigned int inflight;
     unsigned int next_action;
 } cdjr_link;
@@ -39,6 +42,11 @@ typedef struct {
  * a new software session. Token zero is never issued. Tick math is modular.
  */
 int cdjr_init(cdjr_link *link, uint32_t timeout_ticks);
+/* Optional delay between completed RESET and STATUS; default is zero. */
+int cdjr_set_settle(cdjr_link *link, uint32_t ticks);
+/* Interrupt is safe only when no physical transfer is outstanding. An
+ * outstanding transfer fails closed and must not be restarted. */
+int cdjr_interrupt(cdjr_link *link);
 int cdjr_begin(cdjr_link *link, uint32_t now);
 /* 1: command available, 0: none, -1: failed. Returned token is the exact
  * value the asynchronous callback must present to cdjr_callback().
