@@ -26,6 +26,8 @@ def main():
     parser.add_argument("--dol", required=True, type=Path)
     parser.add_argument("--gba", required=True, type=Path)
     parser.add_argument("--profile", required=True, type=Path)
+    parser.add_argument("--expect-dol-sha256", help="Expected DOL SHA-256 from the matching CI artifact")
+    parser.add_argument("--expect-gba-sha256", help="Expected GBA SHA-256 from the same CI run")
     args = parser.parse_args()
 
     for label, path in (("BIOS", args.bios), ("DOL", args.dol), ("GBA", args.gba)):
@@ -35,6 +37,17 @@ def main():
         parser.error("BIOS must be exactly 16384 bytes")
     if args.dol.stat().st_size == 0 or args.gba.stat().st_size == 0:
         parser.error("DOL/GBA must not be empty")
+
+    # Reject mismatched or mixed-run artifacts BEFORE creating the profile.
+    expected = (args.expect_dol_sha256, args.expect_gba_sha256)
+    if any(expected) and not all(expected):
+        parser.error("Provide both expected artifact SHA-256 values together")
+    if all(expected):
+        for label, path, digest in (("DOL", args.dol, expected[0]), ("GBA", args.gba, expected[1])):
+            if len(digest) != 64 or any(ch not in "0123456789abcdefABCDEF" for ch in digest):
+                parser.error(f"{label} expected SHA-256 must contain 64 hexadecimal characters")
+            if file_hash(path) != digest.lower():
+                parser.error(f"{label} SHA-256 mismatch: refusing to prepare profile")
 
     # Refuse source, artifact, and input overlap. Only a new disposable profile.
     profile = args.profile.resolve()
