@@ -55,6 +55,44 @@ No automatic retransmission occurs after an accepted but uncertain write.
 
 Host tests cover key byte order, actual-runtime versus BIOS-only acceptance,
 refused-word rollback, owned buffers on watchdog expiry, stale/error callbacks,
-busy bounds and clock wraparound. CI tests and compilation do not establish
+busy bounds and clock wraparound. The interrupted-operation matrix reaches real
+submitted client-key, header, encrypted-body, CRC, final-BIOS-read and runtime-read
+operations. Each is tested with a missing callback, wrong token, SI error,
+callback exactly at the deadline and callback after the deadline (30 faults),
+plus valid completion one tick before expiry. Tests assert terminal failure,
+no further submission or restart, no rollback of uncertain bytes, and retention
+of buffers for missing callbacks. Separate tests reject a BIOS-only runtime
+marker, exhaust all 20 bad runtime replies, bound refused final reads and enforce
+the overall attempt deadline. These faults are host simulations, not injected
+electrical faults or physical interrupted-session validation.
+
+CI tests and compilation do not establish
 hardware or emulator execution. v7/v8 sources and all proven diagnostics remain
 unchanged. No cartridge ROM/save, memory card, SD or GCMCE writes occur.
+
+## Observed Dolphin execution — October 11, 2026
+
+The exact released DOL from source `eab432c6d9767c83a710c64e0d07e89724310954`
+and [CI run 38172031280](https://github.com/PercAngle312/CubeDeck/actions/runs/38172031280)
+(84/84 successful jobs) was run in our opt-in patched SD2SP2 Dolphin environment.
+DOL SHA-256: `bfb85a73478c71e253f8205092c5c86ad9c3f54021f721c15c4626deff47c453`.
+The logo-free 2064-byte GBA template SHA-256:
+`bd39f628f715c5d7916519f177177c17c97acc5752eb2f0c45ac4540ae531cac`.
+The disposable SD image included the user's private BIOS, which is not published.
+
+The GBA window turned cyan and the GameCube screen displayed **PASS: RAM program
+replied CDR9**, runtime reads 1 and RAM reply `39524443`. Storage mounted and
+loaded the 2064-byte template. The runner checked that the DOL and synthetic SD
+image hashes did not change. This establishes program upload and execution in
+that emulator setup; it does not establish physical v9 execution, cartridge
+access or interrupted-session reliability. Physical testing was deferred at
+the user's request while away from home. The already-delivered v9 ZIP remains
+the next hardware test; this later evidence/test commit does not replace it.
+
+For an emulator failure check, one byte in the BIOS file within a separate
+disposable SD image was flipped before launch. The same exact v9 DOL mounted
+the image and loaded the template, but displayed file error **-29**, runtime
+reads 0 and RAM reply 0 after the runner pressed A. The GBA stayed at its BIOS
+boot screen. The runner again verified unchanged DOL/image hashes during the
+run. This validates that the revision/file gate blocks upload for this corrupt
+file; it is not a simulated SI disconnect or a real-card corruption test.
