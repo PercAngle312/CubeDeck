@@ -930,3 +930,11 @@ jobs:
           name: cubedeck-v2-ram16-wait-gba
           path: experiments/v2-probe/out/cubedeck-v2-ram16-wait.gba
           if-no-files-found: error
+
+  test-dolphin-preflight:
+    name: Test isolated Dolphin profile preparation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic preflight isolation tests
+        run: python3 tests/test_dolphin_preflight.py
