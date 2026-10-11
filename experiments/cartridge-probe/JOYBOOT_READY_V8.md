@@ -43,8 +43,34 @@ key read, SI errors, wrong tokens, late/missing callbacks, retained pending
 buffers, forbidden restart, busy submission bounds, STATUS attempt exhaustion
 and tick wraparound. They assert every submitted command is RESET, STATUS or
 READ. CI runs ASan/UBSan and cross-compiles the distinct DOL; packaging depends
-on readiness, SD mount/GPT and runtime write-audit checks. Real SI timing and
-GBA readiness remain unverified until the user tests v8.
+on readiness, SD mount/GPT and runtime write-audit checks. The physical result
+below confirms one successful readiness run; repeated startup and interrupted
+sessions remain separate hardware questions.
+
+## User-reported hardware PASS — October 11, 2026
+
+The user supplied photo `IMG_1413.jpg` after receiving the v8 ZIP built from
+source `9bb1e29ec2cf5919f190597474b37ffc3be49402`, CI run
+[38165076417](https://github.com/PercAngle312/CubeDeck/actions/runs/38165076417).
+This result belongs to that delivered build, not this later documentation
+commit or a subsequent rebuild. Delivered DOL SHA-256:
+`cd52ed4b81cef9115574099ba835151257643e11c82e065bc6702a7985144c1d`.
+The checksum was checked in the ZIP, not independently on the console.
+
+The photographed real GameCube screen shows:
+
+- Storage driver 1, card 1, mount 1, storage error 0 and errno 0.
+- `sd:/cubedeck/joyboot-probe.gba` loaded: 3200 bytes.
+- GPT error 0, mounted entry 1, LBA 2048.
+- GBA port 2, stage READY, STATUS polls 1, SI refusals 0.
+- SI raw result 0, pending 0, callback 0.
+- **PASS: BIOS ready and session key received.**
+
+This confirms SD file reading followed by RESET/STATUS/session-key readiness
+on the user's physical setup for one run. No payload was sent. GBA program
+execution, full upload, cartridge reading and interrupted-session reliability
+have not been established by this result. The photographed screen explicitly
+states no cartridge access, SD reads only and no storage writes.
 
 For one focused hardware test, leave the v7 files in place, copy only the new
 DOL to SD root, connect the link cable to controller port 2, turn on GBA with no

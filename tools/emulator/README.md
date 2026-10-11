@@ -83,7 +83,10 @@ The SD trace recorded `denied=0`: no write commands reached the emulator model.
 
 This validates the released DOL's SD/file path and RESET → STATUS → key-read
 path in the patched emulator with a synthetic disk and user-supplied BIOS.
-It does not validate GBA program execution, payload upload or real v8 hardware
-behavior. The user-confirmed physical baseline remains v7's photographed SD
-read PASS followed by three successful cold starts. Physical v8 testing is
-still outstanding; the same already-delivered v8 ZIP remains the hardware test.
+The emulator result does not validate GBA program execution, payload upload or
+physical timing. Separately, the user supplied a photographed real v8 readiness
+PASS on October 11, 2026; see
+[the v8 hardware record](../../experiments/cartridge-probe/JOYBOOT_READY_V8.md).
+The physical SD baseline remains v7's photographed read PASS followed by three
+successful cold starts. Physical v8 readiness has one recorded PASS; payload
+upload and interrupted-session reliability still await separate validation.
