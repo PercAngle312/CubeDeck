@@ -4,7 +4,7 @@
 #include <stdint.h>
 /* This module validates candidate images; it does not communicate with a GBA. */
 #define CD_MB_HEADER_BYTES 0xC0u
-#define CD_MB_MIN_IMAGE_BYTES 0x100u
+#define CD_MB_MIN_IMAGE_BYTES 0x200u
 #define CD_MB_MAX_IMAGE_BYTES 0x3FF40u
 typedef struct {
     uint32_t image_bytes;
