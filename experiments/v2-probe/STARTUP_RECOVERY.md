@@ -36,3 +36,28 @@ rather than assuming the callback knows which request was completed.
 Do not claim this CI test solves intermittent real-console startup; the
 user's restart on unchanged binaries demonstrated recovery but the
 physical timing root cause has not yet been isolated.
+
+## October 2026 opt-in startup-sync experiment
+
+Branch `experiment/joybus-session-sync` adds an **unverified**, independent
+`cubedeck-v2-ack-sync.dol` from `gamecube-ack-sync.c`. Build using:
+`make -f experiments/v2-probe/Makefile ack-sync-gamecube`.
+
+The separate DOL inserts eight VSync intervals after successful RESET
+and after successful STATUS before transmitting framed data. It reuses
+the existing GBA ACK fixture; **do not replace the previously proven
+`cubedeck-v2-ack.dol` or GBA ROM**. This experiment is not a fix verified
+on real hardware. Only test it after safely rebooting both devices and
+when access to hardware is available.
+
+The portable host controller now optionally waits an owner-controlled
+tick interval between RESET and STATUS, and refuses to reuse an
+interrupted in-flight SI request (until external quiescence and explicit
+reinitialization). An interruption with no request in flight may be
+followed by a new software session. Nothing in this controller performs
+ROM, save, or storage writes.
+
+**Known limitation:** the alternate DOL still uses the legacy ACK probe's
+SI callbacks. It does not yet integrate `cdjr_link` token ownership; do
+not claim that the controller's host fault matrix proves the DOL immune to
+late hardware callbacks or hardware startup races.
