@@ -1547,3 +1547,16 @@ jobs:
             experiments/cartridge-probe/joyboot_si_adapter.c tests/test_joyboot_si_adapter.c \
             -o /tmp/test-si-adapter
           /tmp/test-si-adapter
+
+  test-ram-v10-protocol:
+    name: Test v10 RAM ping/ack frames
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run v10 protocol tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined \
+            experiments/cartridge-probe/test_ram_v10_protocol.c \
+            -o /tmp/test-ram-v10-protocol
+          /tmp/test-ram-v10-protocol
+
