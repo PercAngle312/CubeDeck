@@ -1022,3 +1022,15 @@ jobs:
           name: cubedeck-discovery-gamecube
           path: experiments/cartridge-probe/out/cubedeck-discovery.dol
           if-no-files-found: error
+
+  test-gba-joyboot-words:
+    name: Test GameCube Joybus multiboot word encoding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and test transport-independent Joyboot encoder
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_joyboot_words.c tests/test_gba_joyboot_words.c \
+            -o /tmp/test-gba-joyboot-words
+          /tmp/test-gba-joyboot-words
