@@ -62,6 +62,18 @@ int main(void) {
     assert(stalled.si.active && pending);
     assert(cd_v10_link_step(&stalled,280u)==-1);
     assert(stalled.error==1u && stalled.si.active && pending);
+    /* A separate client must fail cleanly when the SI callback reports an
+     * error; a failed WRITE must not be mistaken for an accepted PING. */
+    pending=0u;
+    cd_v10_link bad={0};
+    assert(cd_v10_link_start(&bad,0x5678u,400u)==0);
+    assert(cd_v10_link_step(&bad,400u)==0);
+    pending_reply=0u;
+    pending_result=8u;
+    assert(cd_v10_link_step(&bad,401u)==-1);
+    assert(bad.error==2u && bad.client.stage==CD_V10_CLIENT_FAILED);
+    assert(bad.reads==1u && bad.token==1u);
+    pending_result=0u;
     puts("v10 mock SI runtime link PASS");
     return 0;
 }
