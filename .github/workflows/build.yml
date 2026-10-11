@@ -1215,3 +1215,41 @@ jobs:
             protocol/gba_joyboot_words.c tests/test_joyboot_reference_vectors.c \
             -o /tmp/test-joyboot-reference-vectors
           /tmp/test-joyboot-reference-vectors
+
+  package-joyboot-pair:
+    name: Package verified experimental Joyboot pair
+    needs: [build-joyboot-uploader, build-joyboot-gba-probe]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-joyboot-experimental
+          path: pair/gamecube
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-joyboot-gba-probe
+          path: pair/gba
+      - name: Check paired artifacts and write checksums
+        run: |
+          set -eu
+          test -s pair/gamecube/cubedeck-joyboot-experimental.dol
+          test -s pair/gba/joyboot-probe.gba
+          python3 - <<'PY'
+          from pathlib import Path
+          gba = Path("pair/gba/joyboot-probe.gba").read_bytes()
+          assert 512 <= len(gba) <= 0x3ff40
+          assert len(gba) % 16 == 0
+          checksum = (-(sum(gba[0xa0:0xbd]) + 0x19)) & 0xff
+          assert gba[0xb2] == 0x96
+          assert gba[0xbd] == checksum
+          PY
+          cd pair
+          sha256sum gamecube/cubedeck-joyboot-experimental.dol gba/joyboot-probe.gba > SHA256SUMS
+          printf '%s\n' 'EXPERIMENTAL / UNVERIFIED ON HARDWARE' \
+            'GBA requires empty-slot multiboot sequence and the supported cartridge-insertion workflow.' \
+            'Do not treat a successful build as a successful cartridge read.' > README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-joyboot-paired-experimental
+          path: pair/
+          if-no-files-found: error
