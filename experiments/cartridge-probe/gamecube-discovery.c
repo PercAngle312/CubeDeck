@@ -12,6 +12,7 @@ static u8 command[32] ATTRIBUTE_ALIGN(32);
 static u8 reply[32] ATTRIBUTE_ALIGN(32);
 static volatile unsigned int in_flight, done;
 static volatile u32 callback_result, completed_frames;
+static volatile u32 submitted_frame;
 static volatile u32 frames;
 static unsigned int attempts, status, failed;
 static u32 last_reply;
@@ -33,6 +34,7 @@ static int submit(u8 opcode, u32 tx_bytes, u32 rx_bytes)
     command[0] = opcode;
     done = 0u;
     in_flight = 1u;
+    submitted_frame = frames;
     u32 accepted = SI_Transfer(GBA_PORT, command, tx_bytes, reply,
                                rx_bytes, completed, 50);
     if (!accepted) in_flight = 0u;
@@ -82,14 +84,14 @@ int main(void)
             last_reply = (u32)reply[0] | ((u32)reply[1] << 8) |
                          ((u32)reply[2] << 16) | ((u32)reply[3] << 24);
             IRQ_Restore(level);
-            if (result || (u32)(when - (frames - 1u)) >= SI_TIMEOUT_FRAMES)
+            if (result || (u32)(when - submitted_frame) >= SI_TIMEOUT_FRAMES)
                 failed = 1u;
             else if (!failed && status == 1u) {
                 if (!submit(0x00u, 1u, 3u)) failed = 1u;
                 else { status = 2u; ++attempts; }
             } else if (!failed && status == 2u) status = 3u;
         }
-        if (in_flight && (u32)(frames - completed_frames) >= SI_TIMEOUT_FRAMES)
+        if (in_flight && (u32)(frames - submitted_frame) >= SI_TIMEOUT_FRAMES)
             failed = 1u; /* terminal until relaunch if callback never arrives */
         printf("\x1b[2J\x1b[2;2HCUBEDECK MULTIBOOT DISCOVERY (NO UPLOAD)\n\n");
         printf("  A: RESET + STATUS probe; B: stop (terminal)\n");
