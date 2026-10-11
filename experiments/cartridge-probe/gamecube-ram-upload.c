@@ -73,12 +73,16 @@ int main(void)
     VIDEO_WaitVSync();
     storage_error = load_fixture();
     for (;;) {
-        PAD_ScanPads();
-        if (!storage_error && upload.phase==CD_JBU_IDLE &&
-            (PAD_ButtonsDown(0)&PAD_BUTTON_A))
-            if (cd_jbu_start(&upload,image,loaded,frame)) storage_error=-30;
-        if (upload.phase!=CD_JBU_IDLE) (void)cd_jbu_step(&upload,frame);
-        printf("\x1b[2J\x1b[2;2HCubeDeck RAM PROGRAM UPLOAD v9\n\n");
+        /* Experiment: after the launch button, do not poll controllers while
+         * the GBA SI channel is performing RESET/STATUS/READ/UPLOAD.
+         * The first SI transaction starts on the next video frame so the
+         * last PAD scan and GBA RESET do not happen in the same iteration. */
+        if (upload.phase==CD_JBU_IDLE) {
+            PAD_ScanPads();
+            if (!storage_error && (PAD_ButtonsDown(0)&PAD_BUTTON_A))
+                if (cd_jbu_start(&upload,image,loaded,frame)) storage_error=-30;
+        } else (void)cd_jbu_step(&upload,frame);
+        printf("\x1b[2J\x1b[2;2HCubeDeck v9 SI POLLING ISOLATION TEST\n\n");
         printf("Storage: driver %d card %d mount %d error %d errno %d\n",
                cd_sd_report.started, cd_sd_report.inserted,
                cd_sd_report.mount_ok, storage_error, open_errno);
