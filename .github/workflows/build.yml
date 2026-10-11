@@ -1141,9 +1141,9 @@ jobs:
           body = ','.join(str(n) for n in data)
           Path('experiments/cartridge-probe/out').mkdir(parents=True, exist_ok=True)
           Path('experiments/cartridge-probe/out/embedded_probe.c').write_text(
-              '#include <stdint.h>\\n'
-              'const unsigned char cd_embedded_probe[] = {' + body + '};\\n'
-              'const unsigned int cd_embedded_probe_size = ' + str(len(data)) + ';\\n')
+              '#include <stdint.h>\n'
+              'const unsigned char cd_embedded_probe[] = {' + body + '};\n'
+              'const unsigned int cd_embedded_probe_size = ' + str(len(data)) + ';\n')
           PY
       - name: Link standalone read-only SD multiboot uploader
         run: |
