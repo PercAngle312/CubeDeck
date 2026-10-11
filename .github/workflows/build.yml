@@ -1277,7 +1277,7 @@ jobs:
           assert gba[0xbd] == checksum
           PY
           mkdir -p sd-ready/cubedeck
-          cp pair/gamecube/cubedeck-joyboot-experimental.dol sd-ready/cubedeck-sd2sp2-v5.dol
+          cp pair/gamecube/cubedeck-joyboot-experimental.dol sd-ready/cubedeck-sd2sp2-v6.dol
           cp pair/gba/joyboot-probe.gba sd-ready/cubedeck/joyboot-probe.gba
           # Storage-only fixture: strip Nintendo logo, no BIOS/ROM assets.
           python3 - <<'PY'
@@ -1287,17 +1287,17 @@ jobs:
           data[4:0xa0] = bytes(0x9c)
           p.write_bytes(data)
           PY
-          printf '%s\n' 'CubeDeck SD2SP2 Diagnostic v5 — STORAGE ONLY' \
+          printf '%s\n' 'CubeDeck SD2SP2 Diagnostic v6 — STORAGE ONLY' \
             "Commit: $GITHUB_SHA" "CI run: $GITHUB_RUN_ID" \
-            'Copy these contents to SD root; launch cubedeck-sd2sp2-v5.dol in Swiss.' \
+            'Copy these contents to SD root; launch cubedeck-sd2sp2-v6.dol in Swiss.' \
             'Expected path sd:/cubedeck/joyboot-probe.gba. No upload is enabled.' \
             'PASS means file read and image checks passed, not GBA execution.' \
             'Probe logo removed: this storage fixture is not BIOS-bootable.' \
             'No BIOS, commercial ROM or Nintendo logo is included.' \
-            'Report driver/card/mount, sector0, P1-P4, raw read error and PASS.' \
+            'Report S0 BPB, GPT signature, raw P1-P4 types/offsets and PASS.' \
             'Hardware mount fix remains unverified. No formatting or writes.' > sd-ready/README.txt
-          (cd sd-ready && sha256sum cubedeck-sd2sp2-v5.dol cubedeck/joyboot-probe.gba > SHA256SUMS)
-          (cd sd-ready && zip -r ../cubedeck-sd2sp2-v5-${GITHUB_SHA:0:12}.zip .)
+          (cd sd-ready && sha256sum cubedeck-sd2sp2-v6.dol cubedeck/joyboot-probe.gba > SHA256SUMS)
+          (cd sd-ready && zip -r ../cubedeck-sd2sp2-v6-${GITHUB_SHA:0:12}.zip .)
           cd pair
           sha256sum gamecube/cubedeck-joyboot-experimental.dol gba/joyboot-probe.gba > SHA256SUMS
           printf '%s\n' 'EXPERIMENTAL / UNVERIFIED ON HARDWARE' \
@@ -1310,8 +1310,8 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: cubedeck-sd2sp2-v5-sd-ready
-          path: cubedeck-sd2sp2-v5-*.zip
+          name: cubedeck-sd2sp2-v6-sd-ready
+          path: cubedeck-sd2sp2-v6-*.zip
           if-no-files-found: error
 
   test-sd2sp2-mount:

@@ -82,7 +82,20 @@ int main(void)
     uint32_t lba, extent;
     assert(!cd_sd_fat_partition(mbr, 0, &lba, &extent));
     assert(!cd_sd_fat_partition(mbr, 4, &lba, &extent));
+    reset(); part(0, 2048); mbr[450] = 0x1c;
+    assert(cd_sd_mount_readonly() == 0 && mounted == 2048);
     reset(); part(0, 2048); mbr[450] = 0xee;
     assert(!cd_sd_fat_partition(mbr, 0, &lba, &extent));
+    assert(cd_sd_mount_readonly() == -22);
+    assert(cd_sd_report.type[0] == 0xee && cd_sd_report.lba[0] == 2048);
+    assert(cd_sd_report.extent[0] == 1000000 && cd_sd_report.gpt_read);
+    assert(!cd_sd_report.gpt_signature && !mounts);
+    memcpy(vbr, "EFI PART", 8);
+    assert(cd_sd_mount_readonly() == -22 && cd_sd_report.gpt_signature);
+    assert(cd_sd_report.bps == 0 && cd_sd_report.spc == 0);
+    reset(); memcpy(mbr, vbr, 512);
+    assert(cd_sd_mount_readonly() == 0);
+    assert(cd_sd_report.bps == 512 && cd_sd_report.spc == 8 &&
+           cd_sd_report.total32 == 1000000 && cd_sd_report.fat32 == 1024);
     puts("SD mount fault matrix passed: read-only boundary, partition scan, BPB bounds, I/O failures.");
 }

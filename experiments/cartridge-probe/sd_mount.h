@@ -6,6 +6,10 @@ typedef struct {
     int mount_ok, mount_errno, read_result, read_failed, failed_result, blocked_writes;
     uint32_t last_read_lba, failed_lba, mounted_lba, reads;
     uint32_t lba[4], extent[4];
+    unsigned type[4], status[4];
+    unsigned bps, spc, reserved, fats, roots, fat16, jump;
+    uint32_t total32, fat32, root_cluster;
+    int gpt_read, gpt_signature;
     int candidate[4], read_ok[4], bpb_ok[4], mount_attempt[4], fat_label[4];
 } cd_sd_mount_report;
 extern cd_sd_mount_report cd_sd_report;

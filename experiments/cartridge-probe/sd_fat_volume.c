@@ -35,7 +35,9 @@ int cd_sd_fat_partition(const uint8_t s[512], unsigned i,
     p = s + 446 + i * 16;
     if (p[0] != 0 && p[0] != 0x80) return 0;
     if (p[4] != 1 && p[4] != 4 && p[4] != 6 && p[4] != 0x0b &&
-        p[4] != 0x0c && p[4] != 0x0e) return 0;
+        p[4] != 0x0c && p[4] != 0x0e && p[4] != 0x11 &&
+        p[4] != 0x14 && p[4] != 0x16 && p[4] != 0x1b &&
+        p[4] != 0x1c && p[4] != 0x1e) return 0;
     start = le32(p + 8); count = le32(p + 12);
     if (!start || !count || (uint64_t)start + count > UINT32_MAX) return 0;
     *lba = start; *extent = count;

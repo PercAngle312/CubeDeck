@@ -127,7 +127,7 @@ int main(void)
             if (probe_status < 0) { state = -1; error = -11; }
             else if (probe_status == 1) state = 4;
         }
-        printf("\x1b[2J\x1b[2;2HCubeDeck SD2SP2 DIAGNOSTIC v5\n\n");
+        printf("\x1b[2J\x1b[2;2HCubeDeck SD2SP2 DIAGNOSTIC v6\n\n");
         #ifdef CUBEDECK_EMBED_PROBE
         printf("Source: EMBEDDED GBA probe (no SD mount needed)\n");
 #else
@@ -144,13 +144,29 @@ int main(void)
         printf("FAT errno %d start %lu reads %lu writes blocked %d\n",
                cd_sd_report.mount_errno, (unsigned long)cd_sd_report.mounted_lba,
                (unsigned long)cd_sd_report.reads, cd_sd_report.blocked_writes);
-        for (unsigned i = 0; i < 4; ++i)
-            printf("P%u LBA %lu candidate %d read %d BPB %d tag %d mount %d\n", i + 1,
-                   (unsigned long)cd_sd_report.lba[i], cd_sd_report.candidate[i],
-                   cd_sd_report.read_ok[i], cd_sd_report.bpb_ok[i],
-                   cd_sd_report.fat_label[i], cd_sd_report.mount_attempt[i]);
+        printf("S0 BPB: jump %02X BPS %u SPC %u reserved %u FATs %u\n",
+               cd_sd_report.jump, cd_sd_report.bps, cd_sd_report.spc,
+               cd_sd_report.reserved, cd_sd_report.fats);
+        printf("S0 roots %u FAT16 %u total %lu FAT32 %lu root %lu\n",
+               cd_sd_report.roots, cd_sd_report.fat16,
+               (unsigned long)cd_sd_report.total32,
+               (unsigned long)cd_sd_report.fat32,
+               (unsigned long)cd_sd_report.root_cluster);
+        printf("SFD %d GPT sector read %d EFI signature %d\n",
+               cd_sd_report.superfloppy, cd_sd_report.gpt_read,
+               cd_sd_report.gpt_signature);
+        for (unsigned i = 0; i < 4; ++i) {
+            printf("P%u type %02X flag %02X LBA %lu size %lu\n", i + 1,
+                   cd_sd_report.type[i], cd_sd_report.status[i],
+                   (unsigned long)cd_sd_report.lba[i],
+                   (unsigned long)cd_sd_report.extent[i]);
+            printf("  candidate %d read %d BPB %d tag %d mount %d\n",
+                   cd_sd_report.candidate[i], cd_sd_report.read_ok[i],
+                   cd_sd_report.bpb_ok[i], cd_sd_report.fat_label[i],
+                   cd_sd_report.mount_attempt[i]);
+        }
 #ifdef CUBEDECK_SD_ONLY
-        printf("Storage-only v5: upload disabled.\n");
+        printf("Storage-only v6: upload disabled.\n");
         if (state == 0) printf("PASS: probe file read and image checks passed.\n");
 #else
         if (state == 0) printf("Press A to try upload to GBA port 2.\n");
