@@ -644,3 +644,18 @@ jobs:
             protocol/joybus_recovery.c tests/test_joybus_recovery.c \
             -o /tmp/test-joybus-recovery
           /tmp/test-joybus-recovery
+
+  build-v2-ack-sync-gamecube:
+    name: Build unverified opt-in startup-sync DOL
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build distinct startup-sync artifact
+        run: make -f experiments/v2-probe/Makefile ack-sync-gamecube
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-ack-sync-UNVERIFIED
+          path: experiments/v2-probe/out/cubedeck-v2-ack-sync.dol
+
