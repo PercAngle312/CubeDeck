@@ -79,3 +79,15 @@ $(OUT)/cubedeck-v2-ack-arm.elf: experiments/v2-probe/gba-ack.c $(PROTO) experime
 $(OUT)/cubedeck-v2-ack.gba: $(OUT)/cubedeck-v2-ack-arm.elf
 	$(ARMOBJ) -O binary $< $@
 	$(GBAFIX) $@ -tCDBKACKTEST -cCDAK -m01
+
+# Separate unverified startup timing build; unchanged verified ACK target above.
+.PHONY: ack-sync-gamecube
+ack-sync-gamecube: $(OUT)/cubedeck-v2-ack-sync.dol
+
+$(OUT)/cubedeck-v2-ack-sync.elf: experiments/v2-probe/gamecube-ack-sync.c $(PROTO) experiments/v2-probe/ack_control.h | $(OUT)
+	$(PPC) -O2 -Wall -Wextra -Wno-unused-parameter -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  experiments/v2-probe/gamecube-ack-sync.c $(PROTO) -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-ack-sync.dol: $(OUT)/cubedeck-v2-ack-sync.elf
+	$(ELF2DOL) $< $@
