@@ -47,7 +47,13 @@ clocks with all-ones reads; unpatched Dolphin leaves TSTART pending when no
 chip select is asserted, stalling libogc's SD reset path before CMD0.
 
 Host tests cover initialization, invalid CRC, selection boundaries, sector bounds,
-streaming/stop, rejected writes and unchanged image bytes. Separate Python tests
+streaming/stop, rejected writes and unchanged image bytes. The interrupted-session
+matrix drops chip select at all five incomplete command lengths, resets a stream
+before its data token and within its body/CRC, reinitializes after reset, reads
+past the final sector, and sends data after rejected single/multiple-block writes.
+Each case checks that the next permitted read returns the original sector and
+that pending or failed operations do not leak stale bytes. These are model-level
+tests, not physical hot-removal or power-loss tests. Separate Python tests
 independently verify GPT/header CRCs, FAT32 BPB, VFAT filename and file chains,
 including a maximum-size fixture and refusal to overwrite existing images.
 CI tests the standalone protocol and image generator. The Dolphin build and
