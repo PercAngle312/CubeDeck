@@ -10,6 +10,7 @@ typedef struct {
     uint32_t crc;
     uint32_t offset;
     uint32_t padded_length;
+    uint32_t image_length;
 } cd_jb_words;
 int cd_jb_words_init(cd_jb_words *state, uint32_t session_key_raw,
                      size_t image_length);
