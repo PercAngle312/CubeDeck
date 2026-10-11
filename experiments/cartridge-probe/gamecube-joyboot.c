@@ -13,6 +13,7 @@
 #include "joyboot_handshake.h"
 #include "joyboot_bridge.h"
 #include "probe_receiver.h"
+#include "sd_mount.h"
 #define PORT 1u
 #define MAX_IMAGE 0x3ff40u
 #define TIMEOUT_FRAMES 180u
@@ -43,13 +44,11 @@ static int load_image(void)
     FILE *f;
     cd_mb_plan plan;
     long size;
-    /* Read-only detection: distinguish SD2SP2 driver, media and FAT. */
-    sd_device_started = __io_gcsd2.startup() ? 1 : 0;
-    sd_card_detected = sd_device_started && __io_gcsd2.isInserted() ? 1 : 0;
-    if (!sd_device_started) return -20;
-    if (!sd_card_detected) return -21;
-    if (!fatMountSimple("sd", &__io_gcsd2)) return -22;
-    sd_mount_status = 1;
+    int mount_result = cd_sd_mount_readonly();
+    sd_device_started = cd_sd_report.started;
+    sd_card_detected = cd_sd_report.inserted;
+    sd_mount_status = cd_sd_report.mount_ok;
+    if (mount_result) return mount_result;
     errno = 0;
     f = fopen("sd:/cubedeck/joyboot-probe.gba", "rb");
     if (!f) {
@@ -93,9 +92,14 @@ int main(void)
     for (;;) {
         PAD_ScanPads();
         if (state == 0 && (PAD_ButtonsDown(0) & PAD_BUTTON_A)) {
+#ifdef CUBEDECK_SD_ONLY
+            /* Storage milestone: never start SI upload or a cartridge probe. */
+            (void)0;
+#else
             if (cd_jb_handshake_init(&handshake, PORT, loaded) != 0)
                 { state = -1; error = -7; }
             else state = 1;
+#endif
         }
         if (state == 1) {
             int status = cd_jb_handshake_step(&handshake, frames, TIMEOUT_FRAMES);
@@ -123,7 +127,7 @@ int main(void)
             if (probe_status < 0) { state = -1; error = -11; }
             else if (probe_status == 1) state = 4;
         }
-        printf("\x1b[2J\x1b[2;2HCubeDeck SD2SP2 DIAGNOSTIC v4\n\n");
+        printf("\x1b[2J\x1b[2;2HCubeDeck SD2SP2 DIAGNOSTIC v5\n\n");
         #ifdef CUBEDECK_EMBED_PROBE
         printf("Source: EMBEDDED GBA probe (no SD mount needed)\n");
 #else
@@ -133,7 +137,24 @@ int main(void)
                sd_device_started, sd_card_detected, sd_mount_status, sd_open_errno);
         printf("Image bytes: %lu   State: %d   Error: %d\n",
                (unsigned long)loaded, state, error);
+        printf("Sector0 %d sig %d raw %d fail %d@%lu\n",
+               cd_sd_report.sector0_ok, cd_sd_report.signature,
+               cd_sd_report.failed_result, cd_sd_report.read_failed,
+               (unsigned long)cd_sd_report.failed_lba);
+        printf("FAT errno %d start %lu reads %lu writes blocked %d\n",
+               cd_sd_report.mount_errno, (unsigned long)cd_sd_report.mounted_lba,
+               (unsigned long)cd_sd_report.reads, cd_sd_report.blocked_writes);
+        for (unsigned i = 0; i < 4; ++i)
+            printf("P%u LBA %lu candidate %d read %d BPB %d tag %d mount %d\n", i + 1,
+                   (unsigned long)cd_sd_report.lba[i], cd_sd_report.candidate[i],
+                   cd_sd_report.read_ok[i], cd_sd_report.bpb_ok[i],
+                   cd_sd_report.fat_label[i], cd_sd_report.mount_attempt[i]);
+#ifdef CUBEDECK_SD_ONLY
+        printf("Storage-only v5: upload disabled.\n");
+        if (state == 0) printf("PASS: probe file read and image checks passed.\n");
+#else
         if (state == 0) printf("Press A to try upload to GBA port 2.\n");
+#endif
         if (state == 1) printf("BIOS step: %u  error: %lu\n",
                                handshake.step, (unsigned long)handshake.errors);
         if (state == 2) printf("Payload: %lu / %lu bytes\n",
