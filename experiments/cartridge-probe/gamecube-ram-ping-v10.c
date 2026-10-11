@@ -34,7 +34,7 @@ static int load_fixture(void)
     if (fread(image, 1, loaded, f) != loaded) { fclose(f); return -5; }
     fclose(f);
     if (cd_mb_plan_image(image, loaded, &plan) || loaded > 16384u ||
-        memcmp(image+0xa0,"CDPING10",6)) return -6;
+        memcmp(image+0xa0,"CDPING10",8)) return -6;
     for (unsigned i=4;i<0xa0;++i) if (image[i]) return -27;
     /* The ZIP has no BIOS/logo. Read the user's own dump and patch RAM only.
      * This specific BIOS revision is pinned by its full-file CRC, not guessed. */
