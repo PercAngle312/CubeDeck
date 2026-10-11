@@ -3,6 +3,7 @@
  * No commercial ROMs, BIOS or copyrighted data included. */
 #include <gccore.h>
 #include <fat.h>
+#include <errno.h>
 #include <sdcard/gcsd.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -25,23 +26,27 @@ static uint32_t final_response;
 static uint32_t probe_start_frame;
 static size_t loaded;
 static int sd_mount_status;
+static int sd_device_started, sd_card_detected, sd_open_errno;
 static int load_image(void)
 {
     FILE *f;
     cd_mb_plan plan;
     long size;
-    /* SD2SP2 is the GameCube serial port 2 slot. Explicitly mount it as
-     * "sd" rather than assuming a launcher-provided default FAT volume. */
-    if (!fatMountSimple("sd", &__io_gcsd2)) {
-        sd_mount_status = -1;
-        /* A launcher may have already registered the same volume.
-         * In that case a read-only open is a better test than failing
-         * simply because mounting again did not succeed. */
-    } else {
+    /* Read-only detection: distinguish SD2SP2 driver, media and FAT. */
+    sd_device_started = __io_gcsd2.startup() ? 1 : 0;
+    sd_card_detected = sd_device_started && __io_gcsd2.isInserted() ? 1 : 0;
+    if (sd_device_started && sd_card_detected &&
+        fatMountSimple("sd", &__io_gcsd2)) {
         sd_mount_status = 1;
+    } else {
+        sd_mount_status = fatInitDefault() ? 2 : -1;
     }
+    errno = 0;
     f = fopen("sd:/cubedeck/joyboot-probe.gba", "rb");
-    if (!f) return sd_mount_status < 0 ? -1 : -2;
+    if (!f) {
+        sd_open_errno = errno;
+        return sd_mount_status < 0 ? -1 : -2;
+    }
     if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return -3; }
     size = ftell(f);
     if (size < 0x200L || size > (long)MAX_IMAGE ||
@@ -110,7 +115,7 @@ int main(void)
         }
         printf("\x1b[2J\x1b[2;2HCubeDeck EXPERIMENTAL JOYBOOT\n\n");
         printf("Source: sd:/cubedeck/joyboot-probe.gba\n");
-        printf("SD2SP2 mount: %s\n", sd_mount_status > 0 ? "OK" : "failed/already mounted");
+        printf("SD2SP2: driver %d card %d mount %d errno %d\n",\n               sd_device_started, sd_card_detected, sd_mount_status, sd_open_errno);
         printf("Image bytes: %lu   State: %d   Error: %d\n",
                (unsigned long)loaded, state, error);
         if (state == 0) printf("Press A to try upload to GBA port 2.\n");
