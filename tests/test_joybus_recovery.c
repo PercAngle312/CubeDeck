@@ -56,6 +56,28 @@ int main(void)
     assert(cdjr_poll(&l, 0u, &action, &old) == 0);
     assert(cdjr_poll(&l, 2u, &action, &old) == -1);
     assert(l.error == CDJR_ERR_TIMEOUT);
+    /* Configurable quiet period and interruption boundaries. */
+    assert(cdjr_init(&l, 50u) == 0);
+    assert(cdjr_set_settle(&l, 4u) == 0);
+    assert(cdjr_begin(&l, 5u) == 0);
+    token = issue(&l, 5u, CDJR_SEND_RESET);
+    assert(cdjr_callback(&l, token, 0u) == 1);
+    assert(cdjr_poll(&l, 6u, &action, &old) == 0);
+    assert(cdjr_poll(&l, 9u, &action, &old) == 0);
+    old = issue(&l, 10u, CDJR_SEND_STATUS);
+    assert(cdjr_interrupt(&l) == -1);
+    assert(l.inflight && l.error == CDJR_ERR_TIMEOUT);
+    assert(cdjr_callback(&l, old, 0u) == 0);
+    assert(cdjr_begin(&l, 11u) == -1);
+    assert(cdjr_init(&l, 50u) == 0);
+    assert(cdjr_begin(&l, 0u) == 0);
+    assert(cdjr_interrupt(&l) == 0);
+    assert(cdjr_begin(&l, 1u) == 0);
+    token = issue(&l, 2u, CDJR_SEND_RESET);
+    assert(cdjr_callback(&l, token, 0u) == 1);
+    assert(cdjr_interrupt(&l) == 0);
+    assert(cdjr_begin(&l, 3u) == 0);
+    assert(cdjr_callback(&l, token, 0u) == 0);
     puts("Joybus startup recovery and stale callback fault matrix passed.");
     return 0;
 }
