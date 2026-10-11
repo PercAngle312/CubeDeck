@@ -6,7 +6,12 @@
  * Frame words travel as tagged low/high halves, so payload/CRC bits cannot
  * alias a session/restart/query marker. IDs are
  * 16-bit nonzero, never reused within one running GameCube process. */
-#ifdef CUBEDECK_RAM16_TRANSFER
+#ifdef CUBEDECK_VERDICT_WAIT
+#ifndef CUBEDECK_RAM16_TRANSFER
+#error "Verdict wait requires the 16 KiB fixture"
+#endif
+#define CDBR_READY 0x43565736u
+#elif defined(CUBEDECK_RAM16_TRANSFER)
 #define CDBR_READY 0x43535236u
 #else
 #define CDBR_READY 0x43425259u
@@ -22,7 +27,11 @@
 #define CDBR_PENDING 0xDE000000u
 #define CDBR_KEY(id, seq) (((uint32_t)(id) << 8) | (uint32_t)(seq))
 #ifdef CUBEDECK_RAM16_TRANSFER
+#ifdef CUBEDECK_VERDICT_WAIT
+#define CDBR_TRANSFER(id) (0xB3CD0000u | (uint32_t)(id))
+#else
 #define CDBR_TRANSFER(id) (0xB2CD0000u | (uint32_t)(id))
+#endif
 #define CDBR_CHUNK_BYTES 128u
 #define CDBR_IMAGE_BYTES 16384u
 #define CDBR_IMAGE_CRC 0xE7638E98u
@@ -36,6 +45,14 @@
 #define CDBR_PACKETS (CDBR_IMAGE_BYTES / CDBR_CHUNK_BYTES)
 #define CDBR_RETRIES 2u
 #define CDBR_GAP 12u
+#ifdef CUBEDECK_VERDICT_WAIT
+#define CDBR_PENDING_POLLS 8u
+/* Displayed numeric causes; matching PENDING is a bounded wait, not NACK. */
+typedef enum {
+    CDBR_RETRY_NONE = 0, CDBR_RETRY_NACK, CDBR_RETRY_VERDICT,
+    CDBR_RETRY_ECHO, CDBR_RETRY_PENDING_LIMIT
+} cdbr_retry_reason;
+#endif
 uint8_t cdbr_expected_byte(size_t offset);
 
 typedef enum {
@@ -47,6 +64,11 @@ typedef struct {
     size_t count, index;
     unsigned int sequence, accepted, retries, recoveries, awaiting, high_half;
     cdbr_tx_phase phase;
+#ifdef CUBEDECK_VERDICT_WAIT
+    unsigned int pending_polls, pending_total, last_retry_sequence;
+    cdbr_retry_reason last_retry_reason;
+    uint32_t last_retry_reply;
+#endif
 } cdbr_tx;
 int cdbr_tx_init(cdbr_tx *tx, uint32_t id);
 int cdbr_tx_next(cdbr_tx *tx, uint32_t now, uint32_t *word);

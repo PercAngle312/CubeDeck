@@ -1,5 +1,7 @@
 #define CUBEDECK_STARTUP_HOST_TEST
-#ifdef CUBEDECK_RAM16_TRANSFER
+#ifdef CUBEDECK_VERDICT_WAIT
+#include "../experiments/v2-probe/gamecube-ram16-wait.c"
+#elif defined(CUBEDECK_RAM16_TRANSFER)
 #include "../experiments/v2-probe/gamecube-ram16.c"
 #else
 #include "../experiments/v2-probe/gamecube-bulk.c"
@@ -11,10 +13,16 @@ static void (*pending_callback)(s32, u32);
 static u8 *pending_response;
 static unsigned int submissions, reject_at, immediate, no_worker;
 static uint32_t response_value;
+#ifdef CUBEDECK_VERDICT_WAIT
+static unsigned int hold_final;
+#endif
 static void decode_peer(void)
 {
     cdbr_work work;
     cdbr_result result;
+#ifdef CUBEDECK_VERDICT_WAIT
+    if (hold_final && fake_peer.frame_sequence == CDBR_PACKETS) return;
+#endif
     if (!no_worker && cdbr_peer_take(&fake_peer, &work)) {
         cdbr_peer_validate(&work, &result);
         cdbr_peer_publish(&fake_peer, &result);
@@ -58,6 +66,9 @@ static void fresh(void)
     data_stage = running = passed = interrupted = data_error = 0u;
     submissions = reject_at = immediate = no_worker = 0u;
     target = 1u;
+#ifdef CUBEDECK_VERDICT_WAIT
+    hold_final = 0u;
+#endif
     pending_callback = NULL;
     memset(&fake_peer, 0, sizeof(fake_peer));
     assert(begin_session());
@@ -140,9 +151,59 @@ int main(void)
         assert(!owned && !pending_callback && submissions == operation);
         assert(link.error == CDJR_ERR_SUBMIT || data_error == 4u);
     }
+#ifdef CUBEDECK_VERDICT_WAIT
+    unsigned int wait_sites = 0u;
+    for (unsigned int poll = 1u; poll < CDBR_PENDING_POLLS; poll += CDBR_PENDING_POLLS - 2u) {
+        for (unsigned int half = 0u; half < 2u; ++half) {
+            for (unsigned int fault = 0u; fault < 3u; ++fault) {
+                fresh();
+                hold_final = 1u;
+                while (packet_tx.pending_total < poll || !pending_callback) advance();
+                if (half) advance(); /* next QUERY's READ instead of SEND */
+                assert(owned && pending_callback && packet_tx.pending_total == poll);
+                assert(packet_tx.phase == CDBR_TX_QUERY && !fake_peer.image_crc);
+                unsigned int before = submissions;
+                if (fault == 0u) {
+                    stop_session();
+                    assert(!begin_session());
+                    respond(0u); service();
+                    assert(!owned && submissions == before);
+                    hold_final = 0u;
+                    assert(begin_session()); finish();
+                } else if (fault == 1u) {
+                    u8 saved[sizeof(command)];
+                    memcpy(saved, command, sizeof(saved));
+                    tick = owned_tick + WATCHDOG; service();
+                    assert(owned && !begin_session() && submissions == before);
+                    assert(memcmp(saved, command, sizeof(saved)) == 0);
+                    respond(0u); service();
+                    assert(!owned && data_error == 1u && !begin_session());
+                } else {
+                    respond(8u); service();
+                    assert(!owned && data_error == 2u && submissions == before);
+                }
+                ++wait_sites;
+            }
+        }
+        fresh(); hold_final = 1u;
+        while (packet_tx.pending_total < poll) advance();
+        assert(!owned);
+        reject_at = submissions + 1u;
+        while (submissions < reject_at) advance();
+        service();
+        assert(!owned && !pending_callback && data_error == 4u);
+        ++wait_sites;
+    }
+    printf("Verdict-wait SI ownership: %u delayed-query fault sites passed.\n", wait_sites);
+#endif
     fresh();
     no_worker = 1u; /* GBA never publishes a CRC verdict: bounded exhaustion */
-    for (unsigned int i = 0u; i < (CDBR_RETRIES + 1u) * (CDBR_WORDS * 4u + CDBR_GAP + 32u) + 100u && !data_error; ++i) advance();
+#ifdef CUBEDECK_VERDICT_WAIT
+    const unsigned int verdict_wait = CDBR_PENDING_POLLS * (CDBR_GAP + 8u);
+#else
+    const unsigned int verdict_wait = 0u;
+#endif
+    for (unsigned int i = 0u; i < (CDBR_RETRIES + 1u) * (CDBR_WORDS * 4u + CDBR_GAP + 32u + verdict_wait) + 100u && !data_error; ++i) advance();
     assert(data_error == 3u && packet_tx.phase == CDBR_TX_FAILED && !owned);
     assert(packet_tx.recoveries == CDBR_RETRIES && fake_peer.accepted == 0u);
     printf("%u-byte SI adapter: 2 full sessions and %u operation fault sites passed.\n",

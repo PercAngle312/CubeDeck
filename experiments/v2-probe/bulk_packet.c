@@ -77,14 +77,41 @@ static int retry(cdbr_tx *tx)
     tx->phase = CDBR_TX_FRAME;
     return 1;
 }
+#ifdef CUBEDECK_VERDICT_WAIT
+static int retry_record(cdbr_tx *tx, cdbr_retry_reason reason, uint32_t reply)
+{
+    tx->last_retry_sequence = tx->sequence;
+    tx->last_retry_reason = reason;
+    tx->last_retry_reply = reply;
+    tx->pending_polls = 0u;
+    return retry(tx);
+}
+#endif
 int cdbr_tx_reply(cdbr_tx *tx, uint32_t word, uint32_t now)
 {
     if (!tx || tx->phase == CDBR_TX_FAILED) return -1;
     if (!tx->awaiting) return 0;
     tx->awaiting = 0u;
     if (tx->phase == CDBR_TX_QUERY) {
+#ifdef CUBEDECK_VERDICT_WAIT
+        if (word == (CDBR_PENDING | CDBR_KEY(tx->id, tx->sequence))) {
+            ++tx->pending_total;
+            if (++tx->pending_polls < CDBR_PENDING_POLLS) {
+                /* Query again without FRAME; preserve the worker epoch. */
+                tx->wait_tick = now;
+                tx->phase = CDBR_TX_GAP;
+                return 1;
+            }
+            return retry_record(tx, CDBR_RETRY_PENDING_LIMIT, word);
+        }
+        if (word != (CDBR_ACK | CDBR_KEY(tx->id, tx->sequence)))
+            return retry_record(tx, word == (CDBR_NACK | CDBR_KEY(tx->id, tx->sequence)) ?
+                                CDBR_RETRY_NACK : CDBR_RETRY_VERDICT, word);
+        tx->pending_polls = 0u;
+#else
         if (word != (CDBR_ACK | CDBR_KEY(tx->id, tx->sequence)))
             return retry(tx); /* includes stale/wrong-session verdicts */
+#endif
         ++tx->accepted;
         tx->retries = 0u;
         if (tx->sequence == CDBR_PACKETS) tx->phase = CDBR_TX_DONE;
@@ -101,7 +128,11 @@ int cdbr_tx_reply(cdbr_tx *tx, uint32_t word, uint32_t now)
             tx->phase = CDBR_TX_FAILED;
             return -1;
         }
+#ifdef CUBEDECK_VERDICT_WAIT
+        return retry_record(tx, CDBR_RETRY_ECHO, word);
+#else
         return retry(tx);
+#endif
     }
     if (tx->phase == CDBR_TX_SESSION) tx->phase = CDBR_TX_FRAME;
     else if (tx->phase == CDBR_TX_FRAME) tx->phase = CDBR_TX_DATA;

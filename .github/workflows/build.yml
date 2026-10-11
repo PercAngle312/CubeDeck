@@ -865,3 +865,67 @@ jobs:
           name: cubedeck-v2-ram16-gba
           path: experiments/v2-probe/out/cubedeck-v2-ram16.gba
           if-no-files-found: error
+
+  test-ram16-wait:
+    name: Test 16 KiB verdict-wait RAM image and SI fault matrices
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check chunks, stored RAM integrity, replay and ownership
+        run: |
+          gcc -DCUBEDECK_RAM16_TRANSFER -DCUBEDECK_VERDICT_WAIT -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/session_guard.c \
+            experiments/v2-probe/bulk_packet.c tests/test_bulk_packets.c \
+            -o /tmp/test-ram16-wait-packets
+          /tmp/test-ram16-wait-packets
+          gcc -DCUBEDECK_RAM16_TRANSFER -DCUBEDECK_VERDICT_WAIT -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            protocol/transport_protocol.c protocol/session_guard.c \
+            experiments/v2-probe/bulk_packet.c tests/test_verdict_wait.c \
+            -o /tmp/test-verdict-wait
+          /tmp/test-verdict-wait
+          gcc -DCUBEDECK_RAM16_TRANSFER -DCUBEDECK_VERDICT_WAIT -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Itests/startup-stubs -Iinclude protocol/joybus_recovery.c \
+            protocol/transport_protocol.c protocol/session_guard.c \
+            experiments/v2-probe/bulk_packet.c tests/test_bulk_adapter.c \
+            -o /tmp/test-ram16-wait-adapter
+          /tmp/test-ram16-wait-adapter
+
+  build-v2-ram16-wait-gamecube:
+    name: Build separate 16 KiB verdict-wait RAM GameCube experiment
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make -f experiments/v2-probe/Makefile ram16-wait-gamecube
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-ram16-wait-gamecube
+          path: experiments/v2-probe/out/cubedeck-v2-ram16-wait.dol
+          if-no-files-found: error
+
+  build-v2-ram16-wait-gba:
+    name: Build separate 16 KiB verdict-wait RAM GBA experiment
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile RAM image companion
+        run: |
+          set -eu
+          if [ ! -f "$DEVKITPRO/libgba/include/gba.h" ]; then
+            pacman -Sy --noconfirm gba-dev
+          fi
+          make -f experiments/v2-probe/Makefile ram16-wait-gba
+          "$DEVKITARM/bin/arm-none-eabi-nm" -S experiments/v2-probe/out/cubedeck-v2-ram16-wait-arm.elf | awk '
+            $NF == "work" { print; if (substr($1, 1, 2) != "02") exit 1; found = 1 }
+            END { if (!found) exit 1 }'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-ram16-wait-gba
+          path: experiments/v2-probe/out/cubedeck-v2-ram16-wait.gba
+          if-no-files-found: error

@@ -63,7 +63,11 @@ static void transfer(unsigned int mode, unsigned int position, uint32_t now)
         assert(peer.accepted == CDBR_PACKETS && peer.image_crc == CDBR_IMAGE_CRC);
         for (size_t i = 0u; i < CDBR_IMAGE_BYTES; ++i)
             assert(peer.image[i] == cdbr_expected_byte(i));
+#ifdef CUBEDECK_VERDICT_WAIT
+        assert(tx.recoveries == (mode && mode != 3u ? 2u : 1u));
+#else
         assert(tx.recoveries == (mode ? 2u : 1u));
+#endif
     }
     ++cases;
 }

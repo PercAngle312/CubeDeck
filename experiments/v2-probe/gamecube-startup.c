@@ -213,7 +213,11 @@ int main(int argc, char **argv)
 #ifdef CUBEDECK_RECOVERY_PACKETS
 #ifdef CUBEDECK_BULK_TRANSFER
 #ifdef CUBEDECK_RAM16_TRANSFER
+#ifdef CUBEDECK_VERDICT_WAIT
+        printf("\x1b[2J\x1b[2;2HCUBEDECK 16 KiB VERDICT WAIT - UNVALIDATED\n\n");
+#else
         printf("\x1b[2J\x1b[2;2HCUBEDECK 16 KiB RAM TRANSFER - UNVALIDATED\n\n");
+#endif
         printf("  A: 16 KiB transfer   Y: 4 fresh sessions   B: interrupt\n");
 #else
         printf("\x1b[2J\x1b[2;2HCUBEDECK 1 KiB RAM TRANSFER - UNVALIDATED\n\n");
@@ -249,7 +253,16 @@ int main(int argc, char **argv)
                (unsigned long)last_si_result, (unsigned long)last_reply);
 #ifdef CUBEDECK_BULK_TRANSFER
 #ifdef CUBEDECK_RAM16_TRANSFER
+#ifdef CUBEDECK_VERDICT_WAIT
+        printf("  Pending polls: %u  Last retry: chunk %u cause %u reply %08lX\n",
+               packet_tx.pending_total, packet_tx.last_retry_sequence,
+               (unsigned int)packet_tx.last_retry_reason,
+               (unsigned long)packet_tx.last_retry_reply);
+        printf("  Causes: 1=NACK 2=verdict 3=echo 4=pending limit\n");
+        printf("  Use ONLY cubedeck-v2-ram16-wait.gba on Port 2.\n");
+#else
         printf("  Use ONLY cubedeck-v2-ram16.gba companion on Port 2.\n");
+#endif
         printf("  Cyan: all 128 chunks AND whole 16384-byte RAM CRC verified\n");
 #else
         printf("  Use ONLY cubedeck-v2-bulk.gba companion on Port 2.\n");

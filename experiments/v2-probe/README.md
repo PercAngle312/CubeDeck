@@ -92,3 +92,6 @@ separate. [Emulator evidence](EMULATOR.md) is distinct from hardware results.
 
 The separate [16 KiB RAM transport beta](RAM16.md) uses distinct paired
 `ram16-gamecube` / `ram16-gba` targets; physical validation is pending.
+
+The separate [16 KiB verdict-wait experiment](RAM16_WAIT.md) bounds matching
+PENDING queries and records retry causes; use only its matching `ram16-wait` pair.

@@ -180,3 +180,29 @@ $(OUT)/cubedeck-v2-ram16-arm.elf: experiments/v2-probe/gba-ram16.c experiments/v
 $(OUT)/cubedeck-v2-ram16.gba: $(OUT)/cubedeck-v2-ram16-arm.elf
 	$(ARMOBJ) -O binary $< $@
 	$(GBAFIX) $@ -tCDBK16KRAM -cCD16 -m01
+
+# Separate opt-in 16 KiB RAM-only transfer: does not link the three-packet fixture.
+BULK := experiments/v2-probe/bulk_packet.c
+BULK_HDR := experiments/v2-probe/bulk_packet.h experiments/v2-probe/bulk_adapter.h
+.PHONY: ram16-wait-gamecube ram16-wait-gba
+ram16-wait-gamecube: $(OUT)/cubedeck-v2-ram16-wait.dol
+ram16-wait-gba: $(OUT)/cubedeck-v2-ram16-wait.gba
+
+$(OUT)/cubedeck-v2-ram16-wait.elf: experiments/v2-probe/gamecube-ram16-wait.c experiments/v2-probe/gamecube-ram16.c experiments/v2-probe/gamecube-bulk.c experiments/v2-probe/gamecube-startup.c protocol/joybus_recovery.c include/cubedeck/joybus_recovery.h $(PROTO) $(BULK) $(BULK_HDR) experiments/v2-probe/startup_fixture.h | $(OUT)
+	$(PPC) -DCUBEDECK_RAM16_TRANSFER -DCUBEDECK_VERDICT_WAIT -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  experiments/v2-probe/gamecube-ram16-wait.c protocol/joybus_recovery.c $(PROTO) $(BULK) \
+	  -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-ram16-wait.dol: $(OUT)/cubedeck-v2-ram16-wait.elf
+	$(ELF2DOL) $< $@
+
+$(OUT)/cubedeck-v2-ram16-wait-arm.elf: experiments/v2-probe/gba-ram16-wait.c experiments/v2-probe/gba-ram16.c experiments/v2-probe/gba-bulk.c experiments/v2-probe/gba-recovery.c $(PROTO) $(BULK) $(BULK_HDR) | $(OUT)
+	$(ARM) -DCUBEDECK_RAM16_TRANSFER -DCUBEDECK_VERDICT_WAIT -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+	  -I$(DEVKITPRO)/libgba/include -Iinclude -specs=gba.specs \
+	  experiments/v2-probe/gba-ram16-wait.c $(PROTO) $(BULK) \
+	  -L$(DEVKITPRO)/libgba/lib -lgba -o $@
+
+$(OUT)/cubedeck-v2-ram16-wait.gba: $(OUT)/cubedeck-v2-ram16-wait-arm.elf
+	$(ARMOBJ) -O binary $< $@
+	$(GBAFIX) $@ -tCDBK16KWAIT -cCDVW -m01
