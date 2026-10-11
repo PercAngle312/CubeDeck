@@ -61,3 +61,8 @@ The 16,256-byte IRQ-excluded snapshot copy and external-RAM worker from the
 16 KiB fixture remain; their physical timing is still unverified. This is a
 synthetic transport experiment, not GBA game execution. Host tests, console
 builds and any later emulator observations are separate evidence.
+
+The exact CI pair now has [Dolphin execution evidence](RAM16_WAIT_EMULATOR.md):
+full image and golden CRC, two matching PENDING waits, only the intentional
+NACK retry, and bounded refusal of the older GBA companion. Physical console
+validation and this pair's repeated-session emulator run remain pending.
