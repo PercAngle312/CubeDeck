@@ -21,6 +21,16 @@ int main(void) {
     assert(!cd_v10_is_ack(CD_V10_READY_WORD,0u));
     assert(cd_v10_is_ack(cd_v10_ack(0xffffu),0xffffu));
     assert(!cd_v10_is_ack(cd_v10_ack(0u),0xffffu));
+    for (uint32_t seq=0;seq<=65535u;++seq) {
+        uint32_t request=cd_v10_ping((uint16_t)seq);
+        uint32_t response=cd_v10_respond(request);
+        assert(cd_v10_is_ack(response,(uint16_t)seq));
+        assert(cd_v10_sequence(response)==seq);
+        assert(!cd_v10_is_ack(response,(uint16_t)(seq+1u)));
+        assert(cd_v10_respond(cd_v10_ack((uint16_t)seq))==
+               cd_v10_error((uint16_t)seq));
+    }
+    assert(cd_v10_respond(CD_V10_READY_WORD)==cd_v10_error(0u));
     puts("v10 32-bit Joybus ping/ack contract PASS");
     return 0;
 }
