@@ -46,17 +46,15 @@ static int load_image(void)
     /* Read-only detection: distinguish SD2SP2 driver, media and FAT. */
     sd_device_started = __io_gcsd2.startup() ? 1 : 0;
     sd_card_detected = sd_device_started && __io_gcsd2.isInserted() ? 1 : 0;
-    if (sd_device_started && sd_card_detected &&
-        fatMountSimple("sd", &__io_gcsd2)) {
-        sd_mount_status = 1;
-    } else {
-        sd_mount_status = fatInitDefault() ? 2 : -1;
-    }
+    if (!sd_device_started) return -20;
+    if (!sd_card_detected) return -21;
+    if (!fatMountSimple("sd", &__io_gcsd2)) return -22;
+    sd_mount_status = 1;
     errno = 0;
     f = fopen("sd:/cubedeck/joyboot-probe.gba", "rb");
     if (!f) {
         sd_open_errno = errno;
-        return sd_mount_status < 0 ? -1 : -2;
+        return -23;
     }
     if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return -3; }
     size = ftell(f);
@@ -125,13 +123,14 @@ int main(void)
             if (probe_status < 0) { state = -1; error = -11; }
             else if (probe_status == 1) state = 4;
         }
-        printf("\x1b[2J\x1b[2;2HCubeDeck JOYBOOT EMBEDDED PROBE v3\n\n");
+        printf("\x1b[2J\x1b[2;2HCubeDeck SD2SP2 DIAGNOSTIC v4\n\n");
         #ifdef CUBEDECK_EMBED_PROBE
         printf("Source: EMBEDDED GBA probe (no SD mount needed)\n");
 #else
         printf("Source: sd:/cubedeck/joyboot-probe.gba\n");
 #endif
-        printf("SD2SP2: driver %d card %d mount %d errno %d\n",\n               sd_device_started, sd_card_detected, sd_mount_status, sd_open_errno);
+        printf("SD2SP2: driver %d card %d mount %d errno %d\n",
+               sd_device_started, sd_card_detected, sd_mount_status, sd_open_errno);
         printf("Image bytes: %lu   State: %d   Error: %d\n",
                (unsigned long)loaded, state, error);
         if (state == 0) printf("Press A to try upload to GBA port 2.\n");
