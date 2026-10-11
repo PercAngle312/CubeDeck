@@ -43,4 +43,10 @@ static inline uint32_t cd_v10_load_le32(const uint8_t in[4]) {
     return (uint32_t)in[0] | ((uint32_t)in[1] << 8) |
            ((uint32_t)in[2] << 16) | ((uint32_t)in[3] << 24);
 }
+/* Pure GBA responder decision, usable in host tests. */
+static inline uint32_t cd_v10_respond(uint32_t request) {
+    uint16_t sequence = cd_v10_sequence(request);
+    return cd_v10_is_ping(request) ? cd_v10_ack(sequence)
+                                   : cd_v10_error(sequence);
+}
 #endif
