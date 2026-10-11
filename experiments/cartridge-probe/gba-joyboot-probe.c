@@ -16,6 +16,8 @@ static void paint(uint16_t color)
 int main(void)
 {
     int result;
+    irqInit();
+    irqEnable(IRQ_VBLANK);
     REG_DISPCNT = MODE_3 | BG2_ENABLE;
     /* Blue: running, green: valid header checksum, red: unavailable/invalid. */
     paint(RGB5(0, 0, 20));
