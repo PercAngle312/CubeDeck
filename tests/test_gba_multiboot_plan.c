@@ -16,12 +16,13 @@ int main(void)
 {
     cd_mb_plan plan = {123u, 456u, 789u}, before;
     set_checksum();
-    assert(cd_mb_plan_image(image, 0x100u, &plan) == 0);
-    assert(plan.image_bytes == 0x100u && plan.payload_bytes == 0x40u);
+    assert(cd_mb_plan_image(image, 0x200u, &plan) == 0);
+    assert(plan.image_bytes == 0x200u && plan.payload_bytes == 0x140u);
     assert(plan.halfwords_in_header == 96u);
     assert(cd_mb_plan_image(image, CD_MB_MAX_IMAGE_BYTES, &plan) == 0);
     before = plan;
     assert(cd_mb_plan_image(image, 0xF0u, &plan) == -1);
+    assert(cd_mb_plan_image(image, 0x100u, &plan) == -1);
     assert(cd_mb_plan_image(image, 0x101u, &plan) == -1);
     assert(cd_mb_plan_image(image, sizeof(image), &plan) == -1);
     image[0xBDu] ^= 1u;
@@ -29,6 +30,6 @@ int main(void)
     assert(memcmp(&before, &plan, sizeof(plan)) == 0);
     assert(cd_mb_plan_image(NULL, 0x100u, &plan) == -1);
     assert(cd_mb_plan_image(image, 0x100u, NULL) == -1);
-    puts("Multiboot image planning: 0x100..0x3FF40 bounds, alignment and checksum passed.");
+    puts("Multiboot image planning: 0x200..0x3FF40 bounds, alignment and checksum passed.");
     return 0;
 }
