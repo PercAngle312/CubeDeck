@@ -24,4 +24,7 @@ int cd_jb_sender_prepare(cd_jb_sender *s, uint32_t now, uint32_t timeout,
 int cd_jb_sender_complete(cd_jb_sender *s, uint32_t generation,
                           uint32_t si_result, uint32_t now);
 int cd_jb_sender_poll(cd_jb_sender *s, uint32_t now);
+/* Final BIOS response is not presumed successful. Only an external,
+ * protocol-specific validator may advance phase 3 to phase 4. */
+int cd_jb_sender_final_reply(cd_jb_sender *s, int validated_reply);
 #endif
