@@ -962,3 +962,16 @@ jobs:
             protocol/gba_cart_header.c protocol/gba_cart_probe.c \
             tests/test_gba_cart_probe.c -o /tmp/test-gba-cart-probe
           /tmp/test-gba-cart-probe
+
+  compile-gba-readonly-header-reader:
+    name: Cross-compile read-only GBA ROM header reader
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile ARM header reader independently
+        run: |
+          arm-none-eabi-gcc -std=c11 -Wall -Wextra -Werror -pedantic -mthumb \
+            -Iinclude -Iexperiments/cartridge-probe -c \
+            experiments/cartridge-probe/gba_rom_reader.c -o /tmp/gba-rom-reader.o
