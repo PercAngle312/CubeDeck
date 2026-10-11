@@ -1091,3 +1091,18 @@ jobs:
               -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
               -c "$src" -o "/tmp/$(basename "$src").o"
           done
+
+  build-joyboot-handshake:
+    name: Cross-compile GameCube Joyboot BIOS handshake
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile BIOS readiness and session-key adapter
+        run: |
+          powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
+            -mogc -mcpu=750 -meabi -mhard-float \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            -c experiments/cartridge-probe/joyboot_handshake.c \
+            -o /tmp/joyboot-handshake.o
