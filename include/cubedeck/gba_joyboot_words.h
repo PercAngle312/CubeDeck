@@ -12,6 +12,8 @@ typedef struct {
     uint32_t padded_length;
     uint32_t image_length;
 } cd_jb_words;
+/* BIOS client key derived from eight-byte-aligned multiboot image size. */
+int cd_jb_client_key(size_t image_length, uint32_t *out);
 int cd_jb_words_init(cd_jb_words *state, uint32_t session_key_raw,
                      size_t image_length);
 int cd_jb_next(const uint8_t *image, size_t capacity, cd_jb_words *state,
