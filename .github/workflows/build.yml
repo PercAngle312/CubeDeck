@@ -1641,3 +1641,43 @@ jobs:
           path: ram-v10/cubedeck-ram-ping-v10.dol
           if-no-files-found: error
 
+  package-ram-v10:
+    name: Package isolated v10 ping SD test without BIOS assets
+    needs: [build-ram-ping-v10-gamecube, build-ram-ping-v10, test-ram-v10-link, test-ram-v10-protocol]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-ram-ping-v10-gamecube
+          path: ram-v10-package
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-ram-ping-v10-logo-free-template
+          path: ram-v10-package/cubedeck
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ram-v10-package/cubedeck/ram-ping-v10.gba').read_bytes()
+          assert 512<=len(p)<=16384 and len(p)%16==0
+          assert p[4:0xa0]==bytes(156)
+          assert p[0xa0:0xa8]==b'CDPING10'
+          assert p[0xb2]==0x96
+          assert (sum(p[0xa0:0xbe])+0x19)&255==0
+          assert Path('ram-v10-package/cubedeck-ram-ping-v10.dol').stat().st_size>1000
+          PY
+          printf 'CubeDeck v10 experimental PING / ACK (not hardware verified)\n' > ram-v10-package/README.md
+          printf 'Copy DOL to SD card; place ram-ping-v10.gba at sd:/cubedeck/.\n' >> ram-v10-package/README.md
+          printf 'Requires your existing local sd:/cubedeck/gba-bios.bin. No BIOS is included.\n' >> ram-v10-package/README.md
+          printf 'GBA in port 2, on with no cartridge; launch DOL in Swiss and press A once.\n' >> ram-v10-package/README.md
+          printf 'Purple GBA screen plus matched PING ACK means PASS.\n' >> ram-v10-package/README.md
+          printf 'Reboot both systems after a terminal failure; never retry in-session.\n' >> ram-v10-package/README.md
+          printf 'Source: %s\nCI run: %s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" >> ram-v10-package/README.md
+          (cd ram-v10-package && sha256sum cubedeck-ram-ping-v10.dol cubedeck/ram-ping-v10.gba > SHA256SUMS)
+          (cd ram-v10-package && zip -r ../cubedeck-ram-ping-v10-${GITHUB_SHA:0:12}.zip .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-ping-v10-sd-ready
+          path: cubedeck-ram-ping-v10-*.zip
+          if-no-files-found: error
+
