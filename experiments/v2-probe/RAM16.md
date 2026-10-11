@@ -48,7 +48,7 @@ not promise automatic recovery from a rebooted peer or electrical faults.
 ## Software checks
 
 The common packet matrix runs against both sizes. The 16 KiB configuration
-covers every stored-prefix byte, every final-frame bit and all 65,535 IDs,
+covers every stored-prefix byte, every bit of the first frame and all 65,535 IDs,
 plus bounded retries, missing work, stale publication and replay. The
 adapter matrix retains exhaustive 1 KiB operation coverage. For 16 KiB it
 samples startup operations and each frame's first send/read, midpoint,
@@ -63,3 +63,8 @@ separately. No physical validation is implied by any of those checks.
 Local sanitizer results: 18,041 packet/image fault cases, all 65,535 IDs,
 and two full adapter sessions with 3,632 sampled SI fault sites passed.
 CI also checks that the linked GBA snapshot symbol is in EWRAM.
+
+One full image now has [Dolphin execution evidence](RAM16_EMULATOR.md):
+128/128 chunks, correct whole-image CRC and cyan, with two observed retries
+(one additional to the deliberate NACK). Its cause remains undiagnosed.
+The four-session and interruption emulator checks for this size remain pending.
