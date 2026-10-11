@@ -21,6 +21,7 @@ static cd_probe_receiver probe_receiver;
 static uint32_t frames;
 static int state, error;
 static uint32_t final_response;
+static uint32_t probe_start_frame;
 static size_t loaded;
 static int load_image(void)
 {
@@ -86,10 +87,11 @@ int main(void)
                 final_response = bridge.final_reply_word;
                 /* A completed read does not prove program execution.
                  * Do not announce success pending BIOS response validation. */
+                probe_start_frame = frames;
                 state = 3;
             }
         }
-        if (state == 3 && frames > 0u) {
+        if (state == 3 && (uint32_t)(frames - probe_start_frame) >= 60u) {
             int probe_status = cd_probe_receiver_step(&probe_receiver, PORT,
                                                        frames, TIMEOUT_FRAMES);
             if (probe_status < 0) { state = -1; error = -11; }
@@ -107,7 +109,7 @@ int main(void)
                                (unsigned long)bridge.sender.words.padded_length);
         if (state == 3) printf("Final BIOS raw reply: %08lX (UNVERIFIED)\n",
                                (unsigned long)final_response);
-        if (state == 4) printf("GBA cartridge checksum: %s (status %08lX)\\n",
+        if (state == 4) printf("GBA cartridge checksum: %s (status %08lX)\n",
                                probe_receiver.valid ? "VALID" : "INVALID",
                                (unsigned long)probe_receiver.raw);
         if (state == -1) printf("Terminal failure. Restart experiment to retry.\n");
