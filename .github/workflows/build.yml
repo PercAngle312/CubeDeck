@@ -1560,3 +1560,40 @@ jobs:
             -o /tmp/test-ram-v10-protocol
           /tmp/test-ram-v10-protocol
 
+  build-ram-ping-v10:
+    name: Build separate v10 GBA RAM ping template
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    env:
+      PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git clone --depth 1 https://github.com/devkitPro/libgba.git /tmp/libgba
+          make -C /tmp/libgba
+          make -C /tmp/libgba install
+          mkdir -p ram-v10
+          arm-none-eabi-gcc -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+            -I$DEVKITPRO/libgba/include -Iexperiments/cartridge-probe \
+            -specs=gba_mb.specs experiments/cartridge-probe/gba-ram-ping-v10.c \
+            -L$DEVKITPRO/libgba/lib -lgba -o ram-v10/ping.elf
+          arm-none-eabi-objcopy -O binary ram-v10/ping.elf ram-v10/ram-ping-v10.gba
+          gbafix ram-v10/ram-ping-v10.gba -tCDPING10 -cCD10 -m01
+          size=$(stat -c %s ram-v10/ram-ping-v10.gba)
+          truncate -s "$(( (size + 15) / 16 * 16 ))" ram-v10/ram-ping-v10.gba
+          test "$(stat -c %s ram-v10/ram-ping-v10.gba)" -le 16384
+          dd if=/dev/zero of=ram-v10/ram-ping-v10.gba bs=1 seek=4 count=156 conv=notrunc status=none
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ram-v10/ram-ping-v10.gba').read_bytes()
+          assert len(p)%16==0 and 512<=len(p)<=16384
+          assert p[4:0xa0]==bytes(156)
+          assert p[0xa0:0xa8]==b'CDPING10'
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-ping-v10-logo-free-template
+          path: ram-v10/ram-ping-v10.gba
+          if-no-files-found: error
+
