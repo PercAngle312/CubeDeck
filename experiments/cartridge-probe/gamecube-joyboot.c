@@ -10,12 +10,14 @@
 #include "cubedeck/gba_multiboot_plan.h"
 #include "joyboot_handshake.h"
 #include "joyboot_bridge.h"
+#include "probe_receiver.h"
 #define PORT 1u
 #define MAX_IMAGE 0x3ff40u
 #define TIMEOUT_FRAMES 180u
 static uint8_t image[MAX_IMAGE] ATTRIBUTE_ALIGN(32);
 static cd_jb_handshake handshake;
 static cd_jb_bridge bridge;
+static cd_probe_receiver probe_receiver;
 static uint32_t frames;
 static int state, error;
 static uint32_t final_response;
@@ -87,6 +89,12 @@ int main(void)
                 state = 3;
             }
         }
+        if (state == 3 && frames > 0u) {
+            int probe_status = cd_probe_receiver_step(&probe_receiver, PORT,
+                                                       frames, TIMEOUT_FRAMES);
+            if (probe_status < 0) { state = -1; error = -11; }
+            else if (probe_status == 1) state = 4;
+        }
         printf("\x1b[2J\x1b[2;2HCubeDeck EXPERIMENTAL JOYBOOT\n\n");
         printf("Source: sd:/cubedeck/joyboot-probe.gba\n");
         printf("Image bytes: %lu   State: %d   Error: %d\n",
@@ -99,6 +107,9 @@ int main(void)
                                (unsigned long)bridge.sender.words.padded_length);
         if (state == 3) printf("Final BIOS raw reply: %08lX (UNVERIFIED)\n",
                                (unsigned long)final_response);
+        if (state == 4) printf("GBA cartridge checksum: %s (status %08lX)\\n",
+                               probe_receiver.valid ? "VALID" : "INVALID",
+                               (unsigned long)probe_receiver.raw);
         if (state == -1) printf("Terminal failure. Restart experiment to retry.\n");
         printf("Read-only SD. No save operations. No retail ROMs bundled.\n");
         VIDEO_WaitVSync();
