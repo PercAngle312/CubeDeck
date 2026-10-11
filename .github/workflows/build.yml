@@ -1340,3 +1340,82 @@ jobs:
             experiments/cartridge-probe/sd_gpt.c protocol/image_integrity.c \
             tests/test_sd_gpt.c -o /tmp/test-sd-gpt
           /tmp/test-sd-gpt
+
+
+  test-joyboot-ready:
+    name: Test isolated BIOS readiness and SI fault matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test RESET STATUS READ without payload writes
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined \
+            -Itests/fixtures/joyboot -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/joyboot_ready.c tests/test_joyboot_ready.c \
+            -o /tmp/test-joyboot-ready
+          /tmp/test-joyboot-ready
+
+  build-joyboot-ready-v8:
+    name: Build separate v8 Joyboot BIOS readiness DOL
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link readiness-only diagnostic with validated SD2SP2 mount
+        run: |
+          mkdir -p experiments/cartridge-probe/out
+          powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
+            -mogc -mcpu=750 -meabi -mhard-float \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/gamecube-joyboot-ready.c \
+            experiments/cartridge-probe/joyboot_ready.c \
+            experiments/cartridge-probe/joyboot_si_adapter.c \
+            experiments/cartridge-probe/sd_mount.c \
+            experiments/cartridge-probe/sd_fat_volume.c \
+            experiments/cartridge-probe/sd_gpt.c protocol/image_integrity.c \
+            protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
+            -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm \
+            -o experiments/cartridge-probe/out/cubedeck-joyboot-ready-v8.elf
+          elf2dol experiments/cartridge-probe/out/cubedeck-joyboot-ready-v8.elf \
+            experiments/cartridge-probe/out/cubedeck-joyboot-ready-v8.dol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-joyboot-ready-v8-gamecube
+          path: experiments/cartridge-probe/out/cubedeck-joyboot-ready-v8.dol
+          if-no-files-found: error
+
+  package-joyboot-ready-v8:
+    name: Package separate v8 BIOS readiness SD ZIP
+    needs: [build-joyboot-ready-v8, test-joyboot-ready, test-sd2sp2-mount, test-sd2sp2-gpt, audit-storage-safety]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-joyboot-ready-v8-gamecube
+          path: ready-v8
+      - name: Package DOL without replacing the tested v7 fixture
+        run: |
+          test -s ready-v8/cubedeck-joyboot-ready-v8.dol
+          printf '%s\n' 'CubeDeck Joyboot BIOS readiness v8 — NO PAYLOAD UPLOAD' \
+            "Commit: $GITHUB_SHA" "CI run: $GITHUB_RUN_ID" \
+            'Copy cubedeck-joyboot-ready-v8.dol to SD root. Keep your v7 DOL and existing cubedeck folder.' \
+            'Required existing file: sd:/cubedeck/joyboot-probe.gba from your working v7 package.' \
+            'Connect GBA link cable to GameCube controller port 2.' \
+            'Turn GBA on with no cartridge and wait at its boot screen.' \
+            'Launch the distinct v8 DOL through Swiss. Confirm storage mount 1 and error 0.' \
+            'Press A on the GameCube controller once. Photograph the final screen.' \
+            'Target: PASS BIOS ready and session key received. GBA may stay at its boot screen.' \
+            'No payload is sent. This does not test GBA execution or cartridge access.' \
+            'On failure do not retry in the same DOL; pending SI buffers remain owned.' \
+            'No BIOS, ROM, Nintendo logo or GBA binary is bundled. No storage writes.' \
+            'Experimental hardware behavior remains unverified.' > ready-v8/README.txt
+          (cd ready-v8 && sha256sum cubedeck-joyboot-ready-v8.dol > SHA256SUMS)
+          (cd ready-v8 && zip -r ../cubedeck-joyboot-ready-v8-${GITHUB_SHA:0:12}.zip .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-joyboot-ready-v8-sd-ready
+          path: cubedeck-joyboot-ready-v8-*.zip
+          if-no-files-found: error
