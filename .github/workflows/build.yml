@@ -1419,3 +1419,15 @@ jobs:
           name: cubedeck-joyboot-ready-v8-sd-ready
           path: cubedeck-joyboot-ready-v8-*.zip
           if-no-files-found: error
+
+  test-emulator-sd2sp2:
+    name: Test read-only emulator SD SPI model and GPT FAT32 image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test protocol model with sanitizers and independent disk inspection
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined \
+            -Itools/emulator tests/test_sd2sp2_spi.cpp -o /tmp/test-sd2sp2-spi
+          /tmp/test-sd2sp2-spi
+          python3 tests/test_sd2sp2_image.py
