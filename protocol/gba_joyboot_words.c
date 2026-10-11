@@ -23,6 +23,28 @@ static uint32_t crc_step(uint32_t crc, uint32_t value)
     }
     return crc;
 }
+int cd_jb_client_key(size_t size, uint32_t *out)
+{
+    uint32_t n, mixed, carry, key;
+    static const uint8_t names[2][4] = {
+        {'K', 'a', 'w', 'a'}, {'s', 'e', 'd', 'o'}
+    };
+    unsigned int variant, byte;
+    if (!out || size < 0x200u || size > 0x3ff40u) return -1;
+    n = (((uint32_t)size + 7u) & ~7u) - 0x200u;
+    n >>= 3;
+    mixed = ((n & 0x3f80u) << 1) | ((n & 0x4000u) << 2) |
+            (n & 0x7fu) | 0x380000u;
+    carry = (mixed >> 16) + (mixed >> 8) + mixed;
+    carry = (carry << 24) | mixed | 0x80808080u;
+    variant = (carry & 0x200u) ? 1u : 0u;
+    key = 0u;
+    for (byte = 0u; byte < 4u; ++byte)
+        key |= (uint32_t)(((carry >> (byte * 8u)) & 0xffu) ^
+                         names[variant][byte]) << ((3u - byte) * 8u);
+    *out = key;
+    return 0;
+}
 int cd_jb_words_init(cd_jb_words *s, uint32_t raw, size_t size)
 {
     if (!s || size < 0x200u || size > 0x3ff40u) return -1;
