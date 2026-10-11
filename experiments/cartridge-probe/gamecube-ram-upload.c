@@ -101,6 +101,13 @@ int main(void)
           (unsigned long)upload.ready.last_result,
           (unsigned long)upload.ready.last_reply,
           upload.ready.awaiting, upload.ready.si.active);
+        printf("Ready SI bytes: %02X %02X %02X %02X age %lu frames\n",
+          upload.ready.si.response[0], upload.ready.si.response[1],
+          upload.ready.si.response[2], upload.ready.si.response[3],
+          (unsigned long)(frame - upload.ready.si.submitted_frame));
+        printf("Ready SI state: callback %lu token %lu\n",
+          (unsigned long)upload.ready.si.done,
+          (unsigned long)upload.ready.si.token);
         printf("BIOS reply %08lX (untrusted), RAM reply %08lX\n",
           (unsigned long)upload.bios_reply,(unsigned long)upload.last_reply);
         if (storage_error) printf("File error. Need v9 template and your own gba-bios.bin.\n");
