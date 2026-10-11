@@ -29,6 +29,7 @@ int cd_jb_sender_prepare(cd_jb_sender *s, uint32_t now, uint32_t timeout,
             return -1;
     } else if (cd_jb_finish(&next, &word) != 0) return -1;
     if (cd_js_begin(&s->queue, word, now, timeout) != 0) return -1;
+    s->before_submit = s->words;
     s->words = next;
     s->pending_generation = s->queue.generation;
     s->pending[0] = 0x15u;
@@ -92,5 +93,21 @@ int cd_jb_sender_final_reply(cd_jb_sender *s, int validated_reply)
         return -1;
     }
     s->phase = 4;
+    return 0;
+}
+
+/* A native SI rejection is the only event that may roll back a prepared
+ * word. A timeout or late callback must NEVER invoke this operation. */
+int cd_jb_sender_reject_unsent(cd_jb_sender *s, uint32_t generation)
+{
+    if (!s || (s->phase != 1 && s->phase != 2) ||
+        s->queue.state != CD_JS_OWNED ||
+        generation != s->pending_generation ||
+        generation != s->queue.generation) return -1;
+    s->words = s->before_submit;
+    s->queue.state = CD_JS_IDLE;
+    s->queue.command_word = 0u;
+    s->pending_generation = 0u;
+    memset(s->pending, 0, sizeof(s->pending));
     return 0;
 }
