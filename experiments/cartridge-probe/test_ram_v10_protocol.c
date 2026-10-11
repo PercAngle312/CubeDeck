@@ -1,5 +1,6 @@
 /* Portable 32-bit Joybus ping/ack contract test. No hardware involved. */
 #include "ram_v10_protocol.h"
+#include "ram_v10_client.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +32,25 @@ int main(void) {
                cd_v10_error((uint16_t)seq));
     }
     assert(cd_v10_respond(CD_V10_READY_WORD)==cd_v10_error(0u));
+    cd_v10_client client={0};
+    cd_v10_client_start(&client,0x1234u);
+    assert(client.stage==CD_V10_CLIENT_WAIT_READY);
+    assert(cd_v10_client_ready(&client,CD_V10_ACK_TAG)==0);
+    assert(client.stage==CD_V10_CLIENT_WAIT_READY);
+    assert(cd_v10_client_ready(&client,CD_V10_READY_WORD)==1);
+    assert(client.stage==CD_V10_CLIENT_SEND_PING);
+    assert(cd_v10_client_sent(&client)==0);
+    assert(cd_v10_client_reply(&client,cd_v10_ack(0x1233u))==0);
+    assert(client.stage==CD_V10_CLIENT_WAIT_ACK);
+    assert(cd_v10_client_reply(&client,CD_V10_READY_WORD)==0);
+    assert(cd_v10_client_reply(&client,cd_v10_ack(0x1234u))==1);
+    assert(client.stage==CD_V10_CLIENT_PASS);
+    assert(cd_v10_client_reply(&client,cd_v10_ack(0x1234u))==-1);
+    cd_v10_client_start(&client,42u);
+    assert(cd_v10_client_ready(&client,CD_V10_READY_WORD)==1);
+    assert(cd_v10_client_sent(&client)==0);
+    assert(cd_v10_client_reply(&client,cd_v10_error(42u))==-1);
+    assert(client.stage==CD_V10_CLIENT_FAILED);
     puts("v10 32-bit Joybus ping/ack contract PASS");
     return 0;
 }
