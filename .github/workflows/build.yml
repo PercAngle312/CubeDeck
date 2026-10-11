@@ -1120,7 +1120,6 @@ jobs:
 
   build-joyboot-uploader:
     name: Build isolated CubeDeck Joyboot uploader DOL
-    needs: [build-joyboot-gba-probe]
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
@@ -1128,32 +1127,14 @@ jobs:
       PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: cubedeck-joyboot-gba-probe
-          path: embedded
-      - name: Generate embedded probe source (no SD access required)
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          data = Path('embedded/joyboot-probe.gba').read_bytes()
-          assert len(data) >= 512 and len(data) <= 0x3ff40 and len(data) % 16 == 0
-          body = ','.join(str(n) for n in data)
-          Path('experiments/cartridge-probe/out').mkdir(parents=True, exist_ok=True)
-          Path('experiments/cartridge-probe/out/embedded_probe.c').write_text(
-              '#include <stdint.h>\n'
-              'const unsigned char cd_embedded_probe[] = {' + body + '};\n'
-              'const unsigned int cd_embedded_probe_size = ' + str(len(data)) + ';\n')
-          PY
       - name: Link standalone read-only SD multiboot uploader
         run: |
           set -eu
           mkdir -p experiments/cartridge-probe/out
-          powerpc-eabi-gcc -DCUBEDECK_EMBED_PROBE -std=gnu11 -O2 -Wall -Wextra -Werror \
+          powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
             -mogc -mcpu=750 -meabi -mhard-float \
             -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
             experiments/cartridge-probe/gamecube-joyboot.c \
-            experiments/cartridge-probe/out/embedded_probe.c \
             experiments/cartridge-probe/joyboot_handshake.c \
             experiments/cartridge-probe/joyboot_bridge.c \
             experiments/cartridge-probe/probe_receiver.c \
