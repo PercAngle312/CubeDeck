@@ -1106,3 +1106,34 @@ jobs:
             -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
             -c experiments/cartridge-probe/joyboot_handshake.c \
             -o /tmp/joyboot-handshake.o
+
+  build-joyboot-uploader:
+    name: Build isolated CubeDeck Joyboot uploader DOL
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link standalone read-only SD multiboot uploader
+        run: |
+          set -eu
+          mkdir -p experiments/cartridge-probe/out
+          powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
+            -mogc -mcpu=750 -meabi -mhard-float \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/gamecube-joyboot.c \
+            experiments/cartridge-probe/joyboot_handshake.c \
+            experiments/cartridge-probe/joyboot_bridge.c \
+            experiments/cartridge-probe/joyboot_si_adapter.c \
+            protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
+            protocol/gba_joyboot_words.c protocol/joyboot_si_queue.c \
+            protocol/joyboot_sender.c \
+            -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm \
+            -o experiments/cartridge-probe/out/cubedeck-joyboot-experimental.elf
+          elf2dol experiments/cartridge-probe/out/cubedeck-joyboot-experimental.elf \
+            experiments/cartridge-probe/out/cubedeck-joyboot-experimental.dol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-joyboot-experimental
+          path: experiments/cartridge-probe/out/cubedeck-joyboot-experimental.dol
+          if-no-files-found: error
