@@ -34,7 +34,7 @@ static int mount_at(uint32_t lba)
 {
     int result;
     errno = 0;
-    /* Explicit location bypasses libfat's early-abort partition search. */
+    /* Explicit volume offset; bounded page prefetch in libdvm/FatFs. */
     result = fatMount("sd", &readonly_sd, lba, 8, 8);
     cd_sd_report.mount_errno = errno;
     if (result) {
