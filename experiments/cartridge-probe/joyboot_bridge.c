@@ -21,13 +21,36 @@ int cd_jb_bridge_step(cd_jb_bridge *b, uint32_t frame, uint32_t timeout)
      * terminal states require a fresh process/adapter, not a retry. */
     if (b->awaiting && cd_gcn_si_take(&b->si, &token, &result, &word) == 0) {
         b->awaiting = 0;
-        if (token != b->submitted_token ||
-            cd_jb_sender_complete(&b->sender, token, result, frame) != 0)
+        if (token != b->submitted_token) return -1;
+        if (b->awaiting_final_read) {
+            b->awaiting_final_read = 0;
+            if (cd_jb_sender_complete_final_read(&b->sender, token,
+                                                  result, frame) != 0)
+                return -1;
+            b->final_reply_word = word; /* Untrusted until caller checks it. */
+            b->final_reply_available = 1;
+        } else if (cd_jb_sender_complete(&b->sender, token, result, frame) != 0)
             return -1;
     }
     if (cd_jb_sender_poll(&b->sender, frame) != 0) return -1;
     if (b->awaiting) return 0;
-    if (b->sender.phase == 3) return 1; /* CRC sent; BIOS final read still needed */
+    if (b->sender.phase == 3) {
+        const uint8_t read_cmd = 0x14u;
+        if (b->final_reply_available) return 1; /* Not BIOS acceptance. */
+        if (cd_jb_sender_prepare_final_read(&b->sender, frame, timeout,
+                                             &token) != 0) return -1;
+        if (cd_gcn_si_submit(&b->si, b->port, &read_cmd, 1u, 5u,
+                             token, frame) != 0) {
+            /* Unlike data words, a refused final read is terminal until
+             * a new session; never let its queue remain falsely owned. */
+            b->sender.phase = -1;
+            return -1;
+        }
+        b->submitted_token = token;
+        b->awaiting_final_read = 1;
+        b->awaiting = 1;
+        return 0;
+    }
     if (b->sender.phase != 1 && b->sender.phase != 2) return -1;
     if (cd_jb_sender_prepare(&b->sender, frame, timeout, command, &token) != 0)
         return -1;
