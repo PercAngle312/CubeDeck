@@ -10,6 +10,31 @@ int cdjr_init(cdjr_link *link, uint32_t timeout_ticks)
     return 0;
 }
 
+int cdjr_set_settle(cdjr_link *link, uint32_t ticks)
+{
+    if (!link || ticks >= 0x80000000u || link->inflight ||
+        (link->phase != CDJR_IDLE && link->phase != CDJR_READY &&
+         link->phase != CDJR_FAILED)) return -1;
+    link->settle_ticks = ticks;
+    return 0;
+}
+
+int cdjr_interrupt(cdjr_link *link)
+{
+    if (!link) return -1;
+    if (link->inflight) {
+        link->error = CDJR_ERR_TIMEOUT;
+        link->phase = CDJR_FAILED;
+        link->next_action = 0u;
+        return -1;
+    }
+    link->next_action = 0u;
+    link->settling = 0u;
+    link->phase = CDJR_FAILED;
+    link->error = CDJR_ERR_NONE;
+    return 0;
+}
+
 int cdjr_begin(cdjr_link *link, uint32_t now)
 {
     (void)now;
@@ -24,6 +49,7 @@ int cdjr_begin(cdjr_link *link, uint32_t now)
     ++link->generation;
     if (!link->generation)
         ++link->generation;
+    link->settling = 0u;
     link->next_action = CDJR_SEND_RESET;
     link->phase = CDJR_RESET;
     link->error = CDJR_ERR_NONE;
@@ -53,6 +79,15 @@ int cdjr_poll(cdjr_link *link, uint32_t now, cdjr_action *action,
     }
     if (link->phase == CDJR_FAILED)
         return -1;
+    if (link->settling == 2u) {
+        link->ready_tick = now;
+        link->settling = 1u;
+    }
+    if (link->settling) {
+        if ((uint32_t)(now - link->ready_tick) < link->settle_ticks)
+            return 0;
+        link->settling = 0u;
+    }
     if (link->next_action) {
         *action = (cdjr_action)link->next_action;
         link->next_action = 0u;
@@ -83,6 +118,10 @@ int cdjr_callback(cdjr_link *link, uint32_t token, uint32_t result)
     if (link->phase == CDJR_RESET) {
         link->phase = CDJR_STATUS;
         link->next_action = CDJR_SEND_STATUS;
+        if (link->settle_ticks) {
+            /* The next poll records the start of the quiet period. */
+            link->settling = 2u;
+        }
         return 1;
     }
     if (link->phase == CDJR_STATUS) {
