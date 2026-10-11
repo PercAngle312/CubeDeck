@@ -1188,3 +1188,17 @@ jobs:
             protocol/cart_probe_reply.c tests/test_cart_probe_reply.c \
             -o /tmp/test-cart-probe-reply
           /tmp/test-cart-probe-reply
+
+  test-probe-receiver:
+    name: Test cartridge status receiver with simulated SI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test startup delay, retry limit and DMA timeout
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined \
+            -Itests/fixtures/joyboot -Iexperiments/cartridge-probe -Iinclude \
+            experiments/cartridge-probe/probe_receiver.c \
+            protocol/cart_probe_reply.c tests/test_probe_receiver.c \
+            -o /tmp/test-probe-receiver
+          /tmp/test-probe-receiver
