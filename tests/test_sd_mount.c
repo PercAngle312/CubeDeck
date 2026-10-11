@@ -4,9 +4,11 @@
 #include <stdio.h>
 #include "sd_mount.h"
 #include "sd_fat_volume.h"
+#include "fixtures/sd/gpt_fixture.h"
 static uint8_t mbr[512], vbr[512];
 static int start_ok = 1, inserted = 1, fail0, failfirst, mount_ok = 1;
 static unsigned mounts;
+static int gpt_mode;
 static uint32_t mounted;
 static bool startup(void) { return start_ok; }
 static bool present(void) { return inserted; }
@@ -31,7 +33,10 @@ int sdgecko_readSectors(int drive, uint32_t lba, uint32_t count, void *buf)
 {
     assert(drive == 2 && count == 1 && ((uintptr_t)buf % 32) == 0);
     if ((!lba && fail0) || (lba == 2048 && failfirst)) return -77;
-    memcpy(buf, !lba ? mbr : vbr, 512);
+    if (gpt_mode && lba == 1) memcpy(buf, cd_sd_fixture_header, 512);
+    else if (gpt_mode && lba >= 2 && lba < 34)
+        memcpy(buf, cd_sd_fixture_table + (lba - 2) * 512, 512);
+    else memcpy(buf, !lba ? mbr : vbr, 512);
     return 0;
 }
 bool fatMount(const char *name, const DISC_INTERFACE *disc, sec_t lba,
@@ -48,7 +53,7 @@ static void reset(void)
 {
     memset(mbr, 0, 512); mbr[510] = 0x55; mbr[511] = 0xaa;
     fat32(); start_ok = inserted = mount_ok = 1;
-    fail0 = failfirst = 0; mounts = 0;
+    fail0 = failfirst = 0; mounts = 0; gpt_mode = 0;
 }
 int main(void)
 {
@@ -86,16 +91,23 @@ int main(void)
     assert(cd_sd_mount_readonly() == 0 && mounted == 2048);
     reset(); part(0, 2048); mbr[450] = 0xee;
     assert(!cd_sd_fat_partition(mbr, 0, &lba, &extent));
-    assert(cd_sd_mount_readonly() == -22);
+    assert(cd_sd_mount_readonly() == -26);
     assert(cd_sd_report.type[0] == 0xee && cd_sd_report.lba[0] == 2048);
     assert(cd_sd_report.extent[0] == 1000000 && cd_sd_report.gpt_read);
     assert(!cd_sd_report.gpt_signature && !mounts);
     memcpy(vbr, "EFI PART", 8);
-    assert(cd_sd_mount_readonly() == -22 && cd_sd_report.gpt_signature);
+    assert(cd_sd_mount_readonly() == -26 && cd_sd_report.gpt_signature);
     assert(cd_sd_report.bps == 0 && cd_sd_report.spc == 0);
     reset(); memcpy(mbr, vbr, 512);
     assert(cd_sd_mount_readonly() == 0);
     assert(cd_sd_report.bps == 512 && cd_sd_report.spc == 8 &&
            cd_sd_report.total32 == 1000000 && cd_sd_report.fat32 == 1024);
+    reset(); part(0, 1); mbr[450] = 0xee; gpt_mode = 1;
+    assert(cd_sd_mount_readonly() == 0 && mounted == 4096 && mounts == 1);
+    assert(cd_sd_report.gpt_candidates == 1 && cd_sd_report.gpt_mounted_index == 2);
+    assert(cd_sd_report.gpt_error == 0 && cd_sd_report.gpt_bpb[0]);
+    assert(cd_sd_report.gpt_lba[0] == 4096 && cd_sd_report.blocked_writes == 1);
+    reset(); part(0, 1); mbr[450] = 0xee; gpt_mode = 1; mount_ok = 0;
+    assert(cd_sd_mount_readonly() == -22 && cd_sd_report.gpt_error == 0);
     puts("SD mount fault matrix passed: read-only boundary, partition scan, BPB bounds, I/O failures.");
 }

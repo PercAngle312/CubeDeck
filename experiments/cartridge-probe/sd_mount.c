@@ -7,10 +7,13 @@
 #include <string.h>
 #include "sd_mount.h"
 #include "sd_fat_volume.h"
+#include "sd_gpt.h"
 cd_sd_mount_report cd_sd_report;
 static DISC_INTERFACE readonly_sd;
 static uint8_t mbr[512] ATTRIBUTE_ALIGN(32);
 static uint8_t boot[512] ATTRIBUTE_ALIGN(32);
+static cd_sd_gpt_work gpt_work;
+static cd_sd_gpt_volumes gpt_volumes;
 static bool read_sectors(sec_t lba, sec_t count, void *buffer)
 {
     int result = sdgecko_readSectors(2, lba, count, buffer);
@@ -42,6 +45,33 @@ static int mount_at(uint32_t lba)
         cd_sd_report.mounted_lba = lba;
     }
     return result;
+}
+static int gpt_sector(void *ctx, uint32_t lba, void *buf)
+{ (void)ctx; return read_sectors(lba, 1, buf); }
+static int mount_gpt(void)
+{
+    unsigned i;
+    cd_sd_report.gpt_error = cd_sd_gpt_read(gpt_sector, NULL, &gpt_work, &gpt_volumes);
+    if (cd_sd_report.gpt_error) return -26;
+    cd_sd_report.gpt_candidates = gpt_volumes.count;
+    for (i = 0; i < gpt_volumes.count; ++i) {
+        int valid;
+        if (i < 4) {
+            cd_sd_report.gpt_lba[i] = gpt_volumes.lba[i];
+            cd_sd_report.gpt_extent[i] = gpt_volumes.extent[i];
+            cd_sd_report.gpt_index[i] = gpt_volumes.index[i];
+        }
+        if (!read_sectors(gpt_volumes.lba[i], 1, boot)) continue;
+        valid = cd_sd_fat_bpb(boot, gpt_volumes.extent[i]);
+        if (i < 4) cd_sd_report.gpt_bpb[i] = valid;
+        if (!valid) continue;
+        if (i < 4) cd_sd_report.gpt_mount_attempt[i] = 1;
+        if (mount_at(gpt_volumes.lba[i])) {
+            cd_sd_report.gpt_mounted_index = gpt_volumes.index[i];
+            return 0;
+        }
+    }
+    return -22;
 }
 static uint32_t le16(const uint8_t *p)
 { return p[0] | (uint32_t)p[1] << 8; }
@@ -87,6 +117,10 @@ int cd_sd_mount_readonly(void)
                                         !memcmp(boot, "EFI PART", 8);
         }
     }
+    /* Protective MBR is metadata, not a FAT volume. Validate primary GPT and
+     * pass its FAT volume LBA to libdvm; no GPT autodiscovery is required. */
+    for (i = 0; i < 4; ++i)
+        if (cd_sd_report.type[i] == 0xee) return mount_gpt();
     cd_sd_report.superfloppy = cd_sd_fat_bpb(mbr, 0);
     if (cd_sd_report.superfloppy) return mount_at(0) ? 0 : -22;
     for (i = 0; i < 4; ++i) {

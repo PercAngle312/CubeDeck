@@ -9,7 +9,11 @@ typedef struct {
     unsigned type[4], status[4];
     unsigned bps, spc, reserved, fats, roots, fat16, jump;
     uint32_t total32, fat32, root_cluster;
-    int gpt_read, gpt_signature;
+    int gpt_read, gpt_signature, gpt_error;
+    unsigned gpt_candidates, gpt_mounted_index;
+    uint32_t gpt_lba[4], gpt_extent[4];
+    unsigned gpt_index[4];
+    int gpt_bpb[4], gpt_mount_attempt[4];
     int candidate[4], read_ok[4], bpb_ok[4], mount_attempt[4], fat_label[4];
 } cd_sd_mount_report;
 extern cd_sd_mount_report cd_sd_report;
