@@ -66,6 +66,11 @@ marker, exhaust all 20 bad runtime replies, bound refused final reads and enforc
 the overall attempt deadline. These faults are host simulations, not injected
 electrical faults or physical interrupted-session validation.
 
+[Direct SI adapter tests](SI_ADAPTER_TESTS.md) additionally compile the real
+adapter with stubbed libogc SI/IRQ entrypoints to check exclusive ownership,
+completion timing, IRQ masks and cleared responses. The v9 package is gated
+on these checks; the previously delivered hardware-test ZIP is unchanged.
+
 CI tests and compilation do not establish
 hardware or emulator execution. v7/v8 sources and all proven diagnostics remain
 unchanged. No cartridge ROM/save, memory card, SD or GCMCE writes occur.

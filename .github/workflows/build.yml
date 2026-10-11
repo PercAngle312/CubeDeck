@@ -1505,7 +1505,7 @@ jobs:
 
   package-ram-v9:
     name: Package separate RAM-only v9 SD ZIP without BIOS assets
-    needs: [test-joyboot-upload-v9, build-ram-upload-v9, build-ram-status-v9, test-joyboot-ready, test-sd2sp2-mount, test-sd2sp2-gpt, audit-storage-safety]
+    needs: [test-joyboot-upload-v9, build-ram-upload-v9, build-ram-status-v9, test-joyboot-ready, test-sd2sp2-mount, test-sd2sp2-gpt, audit-storage-safety, test-joyboot-si-adapter]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1534,3 +1534,15 @@ jobs:
           name: cubedeck-ram-upload-v9-sd-ready
           path: cubedeck-ram-upload-v9-*.zip
           if-no-files-found: error
+
+  test-joyboot-si-adapter:
+    name: Test actual Joyboot SI adapter and IRQ ownership
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined \
+            -Itests/fixtures/si -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/joyboot_si_adapter.c tests/test_joyboot_si_adapter.c \
+            -o /tmp/test-si-adapter
+          /tmp/test-si-adapter
