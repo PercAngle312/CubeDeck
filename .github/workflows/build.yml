@@ -1203,3 +1203,15 @@ jobs:
             protocol/cart_probe_reply.c tests/test_probe_receiver.c \
             -o /tmp/test-probe-receiver
           /tmp/test-probe-receiver
+
+  test-joyboot-reference-vectors:
+    name: Test independent Joyboot encryption reference vectors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every payload word, final padding and checksum
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_joyboot_words.c tests/test_joyboot_reference_vectors.c \
+            -o /tmp/test-joyboot-reference-vectors
+          /tmp/test-joyboot-reference-vectors
