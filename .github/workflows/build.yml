@@ -1597,3 +1597,16 @@ jobs:
           path: ram-v10/ram-ping-v10.gba
           if-no-files-found: error
 
+  test-ram-v10-link:
+    name: Test v10 SI runtime client with simulated callbacks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined \
+            -Itests/fixtures/si -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/ram_v10_link.c \
+            experiments/cartridge-probe/test_ram_v10_link.c \
+            -o /tmp/test-ram-v10-link
+          /tmp/test-ram-v10-link
+
