@@ -999,3 +999,26 @@ jobs:
             protocol/gba_multiboot_session.c tests/test_gba_multiboot_session.c \
             -o /tmp/test-gba-multiboot-session
           /tmp/test-gba-multiboot-session
+
+  build-cartridge-discovery:
+    name: Build isolated GameCube multiboot discovery probe
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile independent GameCube discovery diagnostic
+        run: |
+          mkdir -p experiments/cartridge-probe/out
+          powerpc-eabi-gcc -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+            -I$DEVKITPRO/libogc/include \
+            experiments/cartridge-probe/gamecube-discovery.c \
+            -L$DEVKITPRO/libogc/lib/cube -logc -lm \
+            -o experiments/cartridge-probe/out/cubedeck-discovery.elf
+          elf2dol experiments/cartridge-probe/out/cubedeck-discovery.elf \
+            experiments/cartridge-probe/out/cubedeck-discovery.dol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-discovery-gamecube
+          path: experiments/cartridge-probe/out/cubedeck-discovery.dol
+          if-no-files-found: error
