@@ -2,16 +2,17 @@
 """Smoke-test the Dolphin profile preflight with wholly synthetic inputs."""
 from pathlib import Path
 import configparser
+import hashlib
 import subprocess
 import sys
 import tempfile
 
 SCRIPT = Path(__file__).resolve().parents[1] / "experiments/v2-probe/prepare_dolphin_profile.py"
 
-def invoke(bios, dol, gba, profile):
+def invoke(bios, dol, gba, profile, extra=()):
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--bios", str(bios), "--dol", str(dol),
-         "--gba", str(gba), "--profile", str(profile)],
+         "--gba", str(gba), "--profile", str(profile), *extra],
         capture_output=True, text=True, check=False,
     )
 
@@ -43,5 +44,22 @@ with tempfile.TemporaryDirectory(prefix="cubedeck-preflight-") as root:
     assert not (base / "bad").exists()
     assert invoke(bios, dol, gba, base).returncode != 0
     assert invoke(bios, dol, gba, base / "missing").returncode == 0
+
+    expected_dol = hashlib.sha256(dol.read_bytes()).hexdigest()
+    expected_gba = hashlib.sha256(gba.read_bytes()).hexdigest()
+    flags = ("--expect-dol-sha256", expected_dol,
+             "--expect-gba-sha256", expected_gba)
+    assert invoke(bios, dol, gba, base / "matched", flags).returncode == 0
+    assert invoke(bios, dol, gba, base / "one-hash",
+                  flags[:2]).returncode != 0
+    assert not (base / "one-hash").exists()
+    assert invoke(bios, dol, gba, base / "wrong-hash",
+                  ("--expect-dol-sha256", "0" * 64,
+                   "--expect-gba-sha256", expected_gba)).returncode != 0
+    assert not (base / "wrong-hash").exists()
+    assert invoke(bios, dol, gba, base / "invalid-hash",
+                  ("--expect-dol-sha256", "not-a-digest",
+                   "--expect-gba-sha256", expected_gba)).returncode != 0
+    assert not (base / "invalid-hash").exists()
 
 print("Synthetic Dolphin preflight: config, isolation and refusal cases passed.")
