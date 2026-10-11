@@ -1431,3 +1431,106 @@ jobs:
             -Itools/emulator tests/test_sd2sp2_spi.cpp -o /tmp/test-sd2sp2-spi
           /tmp/test-sd2sp2-spi
           python3 tests/test_sd2sp2_image.py
+
+  test-joyboot-upload-v9:
+    name: Test RAM-only v9 upload and callback ownership
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined \
+            -Itests/fixtures/joyboot -Iexperiments/cartridge-probe -Iinclude \
+            experiments/cartridge-probe/joyboot_upload.c experiments/cartridge-probe/joyboot_ready.c \
+            protocol/joyboot_sender.c protocol/joyboot_si_queue.c protocol/gba_joyboot_words.c \
+            protocol/gba_multiboot_plan.c protocol/gba_cart_header.c tests/test_joyboot_upload.c -o /tmp/test-jbu
+          /tmp/test-jbu
+
+  build-ram-upload-v9:
+    name: Build separate v9 RAM program uploader
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p ram-v9
+          powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/gamecube-ram-upload.c \
+            experiments/cartridge-probe/joyboot_upload.c experiments/cartridge-probe/joyboot_ready.c \
+            experiments/cartridge-probe/joyboot_si_adapter.c experiments/cartridge-probe/sd_mount.c \
+            experiments/cartridge-probe/sd_fat_volume.c experiments/cartridge-probe/sd_gpt.c \
+            protocol/image_integrity.c protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
+            protocol/joyboot_sender.c protocol/joyboot_si_queue.c protocol/gba_joyboot_words.c \
+            -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm -o ram-v9/upload.elf
+          elf2dol ram-v9/upload.elf ram-v9/cubedeck-ram-upload-v9.dol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-upload-v9-gamecube
+          path: ram-v9/*.dol
+          if-no-files-found: error
+
+  build-ram-status-v9:
+    name: Build logo-free v9 RAM status template
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    env:
+      PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git clone --depth 1 https://github.com/devkitPro/libgba.git /tmp/libgba
+          make -C /tmp/libgba
+          make -C /tmp/libgba install
+          mkdir -p ram-v9
+          arm-none-eabi-gcc -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+            -I$DEVKITPRO/libgba/include -specs=gba_mb.specs \
+            experiments/cartridge-probe/gba-ram-status.c -L$DEVKITPRO/libgba/lib -lgba \
+            -o ram-v9/status.elf
+          arm-none-eabi-objcopy -O binary ram-v9/status.elf ram-v9/ram-status-v9.gba
+          gbafix ram-v9/ram-status-v9.gba -tCDRAM9 -cCDR9 -m01
+          size=$(stat -c %s ram-v9/ram-status-v9.gba)
+          truncate -s "$(( (size + 15) / 16 * 16 ))" ram-v9/ram-status-v9.gba
+          test "$(stat -c %s ram-v9/ram-status-v9.gba)" -le 16384
+          # Never publish toolchain-provided logo bytes or the ELF.
+          dd if=/dev/zero of=ram-v9/ram-status-v9.gba bs=1 seek=4 count=156 conv=notrunc status=none
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-status-v9-template
+          path: ram-v9/ram-status-v9.gba
+          if-no-files-found: error
+
+  package-ram-v9:
+    name: Package separate RAM-only v9 SD ZIP without BIOS assets
+    needs: [test-joyboot-upload-v9, build-ram-upload-v9, build-ram-status-v9, test-joyboot-ready, test-sd2sp2-mount, test-sd2sp2-gpt, audit-storage-safety]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-ram-upload-v9-gamecube
+          path: ram-package
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-ram-status-v9-template
+          path: ram-package/cubedeck
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ram-package/cubedeck/ram-status-v9.gba').read_bytes()
+          assert 512 <= len(p) <= 16384 and len(p)%16==0
+          assert p[4:0xa0]==bytes(156) and p[0xa0:0xa6]==b'CDRAM9'
+          assert p[0xb2]==0x96 and (sum(p[0xa0:0xbe])+0x19)&255==0
+          PY
+          cp experiments/cartridge-probe/RAM_UPLOAD_V9.md ram-package/README.md
+          printf '\nSource: %s\nCI run: %s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" >> ram-package/README.md
+          (cd ram-package && sha256sum cubedeck-ram-upload-v9.dol cubedeck/ram-status-v9.gba > SHA256SUMS)
+          (cd ram-package && zip -r ../cubedeck-ram-upload-v9-${GITHUB_SHA:0:12}.zip .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-upload-v9-sd-ready
+          path: cubedeck-ram-upload-v9-*.zip
+          if-no-files-found: error
