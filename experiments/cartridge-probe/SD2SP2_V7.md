@@ -5,8 +5,8 @@
 User photo IMG_1409.jpg from real hardware running v6 shows driver/card 1,
 sector0/signature 1, P1 type **EE**, start LBA **1**, and an **EFI PART**
 signature in sector 1. FAT32 is the filesystem; GPT is the surrounding partition
-layout. The presence of GPT is now hardware evidence, although CRC validity and
-its actual FAT volume offset have not yet been checked on the user's card.
+layout. The v6 screen established the GPT layout. The v7 result below subsequently
+confirmed successful metadata validation and FAT volume selection at LBA 2048.
 
 v5/v6 deliberately accepted only ordinary/hidden MBR FAT partitions and SFD.
 They rejected the protective EE entry, never mounting the contained FAT volume.
@@ -19,7 +19,7 @@ FatFs-mod 0.15.3. That version's `ffconf.h` sets **FF_LBA64=0** and `ff.c` place
 GPT autodiscovery inside `#if FF_LBA64`. With this configuration, the protective
 MBR is searched as an ordinary MBR instead of entering GPT discovery. This is a
 source-supported explanation for v4's mount failure on the observed GPT layout;
-the fix still needs confirmation on the actual card.
+the v7 result below confirms the explicit-volume fix mounts the actual card.
 
 References:
 - [devkitPro package recipe](https://github.com/devkitPro/pacman-packages/blob/master/libfat/PKGBUILD)
@@ -70,14 +70,44 @@ ranges, overlapping entries, duplicate/zero IDs, no data candidates and atomic
 empty outputs on failure. Existing MBR/SFD/hidden FAT and write-denial cases
 remain. Tests do not replace physical SD reads or execute real libdvm mounting.
 
-## SD-ready package and next hardware check
+## SD-ready package
 
 Artifact `cubedeck-sd2sp2-v7-sd-ready` contains versioned ZIP with:
 `cubedeck-sd2sp2-v7.dol`, `cubedeck/joyboot-probe.gba`, README and checksums.
 The 3200-byte homebrew fixture has its Nintendo logo removed. It is for storage
 loading, not BIOS execution. No BIOS or retail ROM assets are bundled.
 
-Keep v6; copy package contents to SD root and launch the distinct v7 DOL in
-Swiss. Target: GPT error 0, a data candidate with BPB 1, mount 1, image bytes
-3200 and PASS. Capture the full screen if any step fails. No reformat required.
-v7's successful real-hardware mount/read remains outstanding.
+## Hardware result — October 11, 2026
+
+The user supplied IMG_1411.jpg showing v7 running on the real GameCube with
+Swiss and the SD2SP2 FAT32 card. The displayed result was:
+
+- Driver startup **1**, card detected **1**, FAT mount **1**, errno **0**.
+- GPT sector read **1**, EFI signature **1**, GPT validation error **0**.
+- One data candidate; GPT entry **1**, start LBA **2048**, BPB **1**, mount **1**.
+- Source `sd:/cubedeck/joyboot-probe.gba`, image bytes **3200**, error **0**.
+- **PASS: probe file read and image checks passed.**
+- **Storage-only v7: upload disabled.**
+
+This confirms SD2SP2 mounting, file loading and image checks on the user's actual
+card in one run. It does not establish reliability across repeated cold starts
+or interrupted sessions. GBA upload, BIOS execution and cartridge access were
+not tested by this storage-only result.
+
+The tested v7 package was produced from source commit
+[`cdd13b0c75399014af20314e63cfd4a9998817ce`](https://github.com/PercAngle312/CubeDeck/commit/cdd13b0c75399014af20314e63cfd4a9998817ce),
+with [CI run 38162766596](https://github.com/PercAngle312/CubeDeck/actions/runs/38162766596)
+passing **76/76 jobs**. This result belongs to that installed package, not a
+subsequent documentation build. Preserve its binaries and ZIP
+`cubedeck-sd2sp2-v7-cdd13b0c7539.zip`.
+
+Package file SHA-256 values (verified from the distributed ZIP, not on-console):
+
+| File | SHA-256 |
+| --- | --- |
+| `cubedeck-sd2sp2-v7.dol` | `2481b64a87f6d5e37af308acdc208405f75269a60f436c1a33028f01cf209f46` |
+| `cubedeck/joyboot-probe.gba` | `868572ea88313743b157253bb1c4fcad6d245a3fd1c5e61c0568b7bb051fa168` |
+
+The next focused hardware check is repeated cold starts and file reads using
+these same v7 files before adding an opt-in upload experiment. No reformat or
+new download is required for that check. Earlier verified builds remain intact.
