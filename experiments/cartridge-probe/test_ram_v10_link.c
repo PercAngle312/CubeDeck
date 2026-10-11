@@ -54,6 +54,14 @@ int main(void) {
     assert(link.client.stage==CD_V10_CLIENT_PASS);
     assert(write_calls==1u && submit_calls==5u);
     assert(cd_v10_link_step(&link,43u)==1);
+    /* A timeout must not silently release a previously accepted SI transfer.
+     * Restart both systems rather than recycling its DMA/IRQ buffers. */
+    cd_v10_link stalled={0};
+    assert(cd_v10_link_start(&stalled,7u,100u)==0);
+    assert(cd_v10_link_step(&stalled,100u)==0);
+    assert(stalled.si.active && pending);
+    assert(cd_v10_link_step(&stalled,280u)==-1);
+    assert(stalled.error==1u && stalled.si.active && pending);
     puts("v10 mock SI runtime link PASS");
     return 0;
 }
