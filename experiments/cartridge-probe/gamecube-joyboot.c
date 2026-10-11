@@ -29,6 +29,17 @@ static int sd_mount_status;
 static int sd_device_started, sd_card_detected, sd_open_errno;
 static int load_image(void)
 {
+#ifdef CUBEDECK_EMBED_PROBE
+    extern const unsigned char cd_embedded_probe[];
+    extern const unsigned int cd_embedded_probe_size;
+    cd_mb_plan plan;
+    if (cd_embedded_probe_size < 0x200u ||
+        cd_embedded_probe_size > MAX_IMAGE ||
+        (cd_embedded_probe_size & 15u)) return -4;
+    loaded = cd_embedded_probe_size;
+    memcpy(image, cd_embedded_probe, loaded);
+    return cd_mb_plan_image(image, loaded, &plan) == 0 ? 0 : -6;
+#else
     FILE *f;
     cd_mb_plan plan;
     long size;
@@ -60,6 +71,7 @@ static int load_image(void)
     fclose(f);
     if (cd_mb_plan_image(image, loaded, &plan) != 0) return -6;
     return 0;
+#endif
 }
 int main(void)
 {
@@ -113,8 +125,12 @@ int main(void)
             if (probe_status < 0) { state = -1; error = -11; }
             else if (probe_status == 1) state = 4;
         }
-        printf("\x1b[2J\x1b[2;2HCubeDeck EXPERIMENTAL JOYBOOT\n\n");
+        printf("\x1b[2J\x1b[2;2HCubeDeck JOYBOOT EMBEDDED PROBE v3\n\n");
+        #ifdef CUBEDECK_EMBED_PROBE
+        printf("Source: EMBEDDED GBA probe (no SD mount needed)\n");
+#else
         printf("Source: sd:/cubedeck/joyboot-probe.gba\n");
+#endif
         printf("SD2SP2: driver %d card %d mount %d errno %d\n",\n               sd_device_started, sd_card_detected, sd_mount_status, sd_open_errno);
         printf("Image bytes: %lu   State: %d   Error: %d\n",
                (unsigned long)loaded, state, error);
