@@ -30,6 +30,7 @@ int cd_jb_words_init(cd_jb_words *s, uint32_t raw, size_t size)
     s->crc = 0x15a0u;
     s->offset = 0u;
     s->padded_length = ((uint32_t)size + 7u) & ~7u;
+    s->image_length = (uint32_t)size;
     return 0;
 }
 int cd_jb_next(const uint8_t *image, size_t capacity, cd_jb_words *s,
@@ -37,6 +38,7 @@ int cd_jb_next(const uint8_t *image, size_t capacity, cd_jb_words *s,
 {
     uint32_t value, i;
     if (!image || !s || !out || s->offset >= s->padded_length) return -1;
+    if (capacity < s->image_length) return -1;
     i = s->offset;
     if (i < 0xc0u) {
         if ((size_t)i + 4u > capacity) return -1;
@@ -45,7 +47,7 @@ int cd_jb_next(const uint8_t *image, size_t capacity, cd_jb_words *s,
         uint8_t b[4] = {0u, 0u, 0u, 0u};
         unsigned int j;
         for (j = 0u; j < 4u; ++j)
-            if ((size_t)i + j < capacity) b[j] = image[i + j];
+            if ((size_t)i + j < s->image_length) b[j] = image[i + j];
         value = le32(b);
         s->crc = crc_step(s->crc, value);
         s->key = s->key * 0x6177614bu + 1u;
