@@ -984,6 +984,7 @@ jobs:
       - name: Check candidate image lengths and fixed header
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/cart_probe_reply.c \
             protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
             tests/test_gba_multiboot_plan.c -o /tmp/test-gba-multiboot-plan
           /tmp/test-gba-multiboot-plan
@@ -1124,6 +1125,7 @@ jobs:
             experiments/cartridge-probe/gamecube-joyboot.c \
             experiments/cartridge-probe/joyboot_handshake.c \
             experiments/cartridge-probe/joyboot_bridge.c \
+            experiments/cartridge-probe/probe_receiver.c \
             experiments/cartridge-probe/joyboot_si_adapter.c \
             protocol/gba_cart_header.c protocol/gba_multiboot_plan.c \
             protocol/gba_joyboot_words.c protocol/joyboot_si_queue.c \
