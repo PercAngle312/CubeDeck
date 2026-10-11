@@ -2,6 +2,7 @@ name: Build CubeDeck
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -929,3 +930,23 @@ jobs:
           name: cubedeck-v2-ram16-wait-gba
           path: experiments/v2-probe/out/cubedeck-v2-ram16-wait.gba
           if-no-files-found: error
+
+  test-dolphin-preflight:
+    name: Test isolated Dolphin profile preparation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic preflight isolation tests
+        run: python3 tests/test_dolphin_preflight.py
+
+  test-gba-cart-header:
+    name: Test read-only GBA cartridge header parsing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic header checksum and bounds tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_cart_header.c tests/test_gba_cart_header.c \
+            -o /tmp/test-gba-cart-header
+          /tmp/test-gba-cart-header

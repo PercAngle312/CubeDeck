@@ -95,10 +95,37 @@ int main(void)
 {
     fresh();
     immediate = 1u;
+#ifdef CUBEDECK_VERDICT_WAIT
+    target = 4u; /* Match the console Y-button fresh-session sequence. */
+#else
     target = 2u;
+#endif
     finish();
-    unsigned int per_session = submissions / 2u;
-    assert(submissions % 2u == 0u && per_session == 5u + (CDBR_PACKETS + 1u) * (CDBR_WORDS * 4u + 4u));
+    unsigned int per_session = submissions / target;
+    assert(submissions % target == 0u && per_session == 5u + (CDBR_PACKETS + 1u) * (CDBR_WORDS * 4u + 4u));
+#ifdef CUBEDECK_VERDICT_WAIT
+    assert(link.generation == target);
+    assert(packet_tx.pending_total == 0u);
+    assert(packet_tx.last_retry_sequence == 2u);
+    assert(packet_tx.last_retry_reason == CDBR_RETRY_NACK);
+#endif
+#ifdef CUBEDECK_VERDICT_WAIT
+    /* Interrupt early, midway, and near completion, then require four new
+     * complete sessions. No pre-interruption chunk may count as completed. */
+    const unsigned int cutoffs[] = {1u, CDBR_PACKETS / 2u, CDBR_PACKETS - 1u};
+    for (unsigned int cutoff_index = 0u; cutoff_index < sizeof(cutoffs) / sizeof(cutoffs[0]); ++cutoff_index) {
+        fresh();
+        target = 4u;
+        while (packet_tx.accepted < cutoffs[cutoff_index]) advance();
+        assert(passed == 0u);
+        stop_session();
+        while (owned) advance(); /* Do not recycle an outstanding SI command. */
+        assert(interrupted && !running && !owned && passed == 0u);
+        assert(begin_session());
+        finish();
+        assert(passed == 4u && link.generation == 5u);
+    }
+#endif
     /* Every SI operation in a full session is an interruption/watchdog/
      * rejection injection site, including verdict QUERY and READ. */
     unsigned int sites = 0u;
@@ -206,7 +233,13 @@ int main(void)
     for (unsigned int i = 0u; i < (CDBR_RETRIES + 1u) * (CDBR_WORDS * 4u + CDBR_GAP + 32u + verdict_wait) + 100u && !data_error; ++i) advance();
     assert(data_error == 3u && packet_tx.phase == CDBR_TX_FAILED && !owned);
     assert(packet_tx.recoveries == CDBR_RETRIES && fake_peer.accepted == 0u);
-    printf("%u-byte SI adapter: 2 full sessions and %u operation fault sites passed.\n",
-           CDBR_IMAGE_BYTES, sites);
+    printf("%u-byte SI adapter: %u full sessions and %u operation fault sites passed.\n",
+           CDBR_IMAGE_BYTES,
+#ifdef CUBEDECK_VERDICT_WAIT
+           4u,
+#else
+           2u,
+#endif
+           sites);
     return 0;
 }
