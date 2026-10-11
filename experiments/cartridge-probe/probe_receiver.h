@@ -4,7 +4,8 @@
 #include <stdint.h>
 typedef struct {
     cd_gcn_si si;
-    uint32_t deadline, token, raw;
+    uint32_t deadline, token, raw, retry_at;
+    unsigned attempts;
     int state, valid;
 } cd_probe_receiver;
 /* Return 1 for decoded result, 0 while waiting, -1 on error.
