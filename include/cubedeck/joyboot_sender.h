@@ -11,6 +11,7 @@ typedef struct {
     size_t capacity;
     uint32_t pending_generation;
     uint32_t acknowledged_words;
+    uint8_t final_read_done;
     uint8_t pending[5];
     int phase; /* 1=words, 2=checksum, 3=await final BIOS read, 4=finished, -1=failed */
 } cd_jb_sender;
@@ -26,5 +27,10 @@ int cd_jb_sender_complete(cd_jb_sender *s, uint32_t generation,
 int cd_jb_sender_poll(cd_jb_sender *s, uint32_t now);
 /* Final BIOS response is not presumed successful. Only an external,
  * protocol-specific validator may advance phase 3 to phase 4. */
+/* SI 0x14 read after CRC. Caller must deliver and validate its response. */
+int cd_jb_sender_prepare_final_read(cd_jb_sender *s, uint32_t now,
+                                    uint32_t timeout, uint32_t *generation);
+int cd_jb_sender_complete_final_read(cd_jb_sender *s, uint32_t generation,
+                                     uint32_t si_result, uint32_t now);
 int cd_jb_sender_final_reply(cd_jb_sender *s, int validated_reply);
 #endif
