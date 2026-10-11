@@ -132,6 +132,10 @@ int main(void)
         printf("PING stage %u seq %04X last %08lX err %u reads %u\n",
                (unsigned)link.client.stage,(unsigned)link.client.sequence,
                (unsigned long)link.client.last_reply,link.error,link.reads);
+        printf("PING SI result %08lX pending %u active %lu done %lu refused %u\n",
+               (unsigned long)link.last_result,link.awaiting,
+               (unsigned long)link.si.active,(unsigned long)link.si.done,
+               link.refusals);
         if (link.client.stage==CD_V10_CLIENT_PASS)
             printf("PASS: GBA RAM PING / ACK matched. GBA PURPLE.\n");
         printf("No cartridge access. SD reads only. No storage writes.\n");
