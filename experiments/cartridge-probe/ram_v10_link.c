@@ -41,6 +41,9 @@ int cd_v10_link_step(cd_v10_link *link, uint32_t frame) {
             if (!good) {
                 if (link->reads>=CD_V10_MAX_READS) return fail(link,4);
                 link->retry_at=frame+CD_V10_READ_DELAY;
+            } else {
+                /* Do not submit WRITE in the same frame as READY callback. */
+                link->retry_at=frame+1u;
             }
         } else if (link->active_phase==CD_V10_CLIENT_SEND_PING) {
             if (cd_v10_client_sent(&link->client)) return fail(link,3);
