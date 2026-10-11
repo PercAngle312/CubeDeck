@@ -109,6 +109,23 @@ int main(void)
     assert(packet_tx.last_retry_sequence == 2u);
     assert(packet_tx.last_retry_reason == CDBR_RETRY_NACK);
 #endif
+#ifdef CUBEDECK_VERDICT_WAIT
+    /* Interrupt early, midway, and near completion, then require four new
+     * complete sessions. No pre-interruption chunk may count as completed. */
+    const unsigned int cutoffs[] = {1u, CDBR_PACKETS / 2u, CDBR_PACKETS - 1u};
+    for (unsigned int cutoff_index = 0u; cutoff_index < sizeof(cutoffs) / sizeof(cutoffs[0]); ++cutoff_index) {
+        fresh();
+        target = 4u;
+        while (packet_tx.accepted < cutoffs[cutoff_index]) advance();
+        assert(passed == 0u);
+        stop_session();
+        while (owned) advance(); /* Do not recycle an outstanding SI command. */
+        assert(interrupted && !running && !owned && passed == 0u);
+        assert(begin_session());
+        finish();
+        assert(passed == 4u && link.generation == 5u);
+    }
+#endif
     /* Every SI operation in a full session is an interruption/watchdog/
      * rejection injection site, including verdict QUERY and READ. */
     unsigned int sites = 0u;
