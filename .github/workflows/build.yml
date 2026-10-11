@@ -950,3 +950,15 @@ jobs:
             protocol/gba_cart_header.c tests/test_gba_cart_header.c \
             -o /tmp/test-gba-cart-header
           /tmp/test-gba-cart-header
+
+  test-gba-cart-probe:
+    name: Test bounded read-only GBA cartridge probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run 192-byte read-only probe tests
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_cart_header.c protocol/gba_cart_probe.c \
+            tests/test_gba_cart_probe.c -o /tmp/test-gba-cart-probe
+          /tmp/test-gba-cart-probe
