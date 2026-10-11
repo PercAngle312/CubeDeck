@@ -61,3 +61,15 @@ int cd_jb_sender_poll(cd_jb_sender *s, uint32_t now)
     }
     return 0;
 }
+
+int cd_jb_sender_final_reply(cd_jb_sender *s, int validated_reply)
+{
+    if (!s || s->phase != 3 || s->queue.state != CD_JS_DONE)
+        return -1;
+    if (!validated_reply) {
+        s->phase = -1;
+        return -1;
+    }
+    s->phase = 4;
+    return 0;
+}
