@@ -89,10 +89,15 @@ Swiss and the SD2SP2 FAT32 card. The displayed result was:
 - **PASS: probe file read and image checks passed.**
 - **Storage-only v7: upload disabled.**
 
+After the photographed pass, the user performed the requested three cold starts
+with the same installed v7 files and reported **all 3 passed** on October 11,
+2026. These are three additional successful runs, for four reported passes
+including the photographed run.
+
 This confirms SD2SP2 mounting, file loading and image checks on the user's actual
-card in one run. It does not establish reliability across repeated cold starts
-or interrupted sessions. GBA upload, BIOS execution and cartridge access were
-not tested by this storage-only result.
+card, including repeatability across those three cold starts. It does not yet
+validate interrupted sessions or other cards/partition layouts. GBA upload, BIOS
+execution and cartridge access were not tested by these storage-only results.
 
 The tested v7 package was produced from source commit
 [`cdd13b0c75399014af20314e63cfd4a9998817ce`](https://github.com/PercAngle312/CubeDeck/commit/cdd13b0c75399014af20314e63cfd4a9998817ce),
@@ -108,6 +113,7 @@ Package file SHA-256 values (verified from the distributed ZIP, not on-console):
 | `cubedeck-sd2sp2-v7.dol` | `2481b64a87f6d5e37af308acdc208405f75269a60f436c1a33028f01cf209f46` |
 | `cubedeck/joyboot-probe.gba` | `868572ea88313743b157253bb1c4fcad6d245a3fd1c5e61c0568b7bb051fa168` |
 
-The next focused hardware check is repeated cold starts and file reads using
-these same v7 files before adding an opt-in upload experiment. No reformat or
-new download is required for that check. Earlier verified builds remain intact.
+The focused three-cold-start check is complete. Preserve this tested v7 package
+as the storage baseline before developing a separately opt-in upload experiment.
+No replacement download is required to retain that baseline. Earlier verified
+builds remain intact.
