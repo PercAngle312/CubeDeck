@@ -1137,3 +1137,35 @@ jobs:
           name: cubedeck-joyboot-experimental
           path: experiments/cartridge-probe/out/cubedeck-joyboot-experimental.dol
           if-no-files-found: error
+
+  build-joyboot-gba-probe:
+    name: Build isolated read-only Joyboot GBA RAM probe
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build GBA companion without proprietary assets
+        run: |
+          set -eu
+          mkdir -p experiments/cartridge-probe/out
+          arm-none-eabi-gcc -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+            -I$DEVKITPRO/libgba/include -Iinclude \
+            -Iexperiments/cartridge-probe -specs=gba.specs \
+            experiments/cartridge-probe/gba-joyboot-probe.c \
+            experiments/cartridge-probe/gba_rom_reader.c \
+            protocol/gba_cart_header.c protocol/gba_cart_probe.c \
+            -L$DEVKITPRO/libgba/lib -lgba \
+            -o experiments/cartridge-probe/out/joyboot-probe.elf
+          arm-none-eabi-objcopy -O binary \
+            experiments/cartridge-probe/out/joyboot-probe.elf \
+            experiments/cartridge-probe/out/joyboot-probe.gba
+          gbafix experiments/cartridge-probe/out/joyboot-probe.gba \
+            -tCDJOYPROBE -cCDJB -m01
+          test "$(stat -c %s experiments/cartridge-probe/out/joyboot-probe.gba)" -ge 512
+          test "$(stat -c %s experiments/cartridge-probe/out/joyboot-probe.gba)" -le 261952
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-joyboot-gba-probe
+          path: experiments/cartridge-probe/out/joyboot-probe.gba
+          if-no-files-found: error
