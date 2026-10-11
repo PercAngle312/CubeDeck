@@ -1074,3 +1074,20 @@ jobs:
             -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
             -c experiments/cartridge-probe/joyboot_si_adapter.c \
             -o /tmp/joyboot-si-adapter.o
+
+  build-joyboot-bridge:
+    name: Cross-compile integrated GameCube Joyboot bridge
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile combined sender and native SI adapter
+        run: |
+          set -eu
+          for src in protocol/gba_joyboot_words.c protocol/joyboot_si_queue.c protocol/joyboot_sender.c experiments/cartridge-probe/joyboot_si_adapter.c experiments/cartridge-probe/joyboot_bridge.c; do
+            powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
+              -mogc -mcpu=750 -meabi -mhard-float \
+              -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+              -c "$src" -o "/tmp/$(basename "$src").o"
+          done
