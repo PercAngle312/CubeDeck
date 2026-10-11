@@ -94,10 +94,10 @@ int main(void)
         printf("Error %u at %s, pending %lu/%lu\n",upload.error,
           phase_name(upload.failed_phase),(unsigned long)upload.ready.si.active,
           (unsigned long)upload.si.active);
-        printf("Ready: phase %u failed %u error %u polls %u refused %u\\n",
+        printf("Ready: phase %u failed %u error %u polls %u refused %u\n",
           upload.ready.phase, upload.ready.failed_phase, upload.ready.error,
           upload.ready.status_polls, upload.ready.refused);
-        printf("Ready SI: result %08lX reply %08lX awaiting %u active %u\\n",
+        printf("Ready SI: result %08lX reply %08lX awaiting %u active %u\n",
           (unsigned long)upload.ready.last_result,
           (unsigned long)upload.ready.last_reply,
           upload.ready.awaiting, upload.ready.si.active);
