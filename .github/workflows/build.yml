@@ -1059,3 +1059,18 @@ jobs:
             protocol/joyboot_sender.c tests/test_joyboot_sender.c \
             -o /tmp/test-joyboot-sender
           /tmp/test-joyboot-sender
+
+  build-joyboot-si-adapter:
+    name: Cross-compile isolated GameCube Joyboot SI adapter
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile GameCube SI owner without altering main DOL
+        run: |
+          powerpc-eabi-gcc -std=gnu11 -O2 -Wall -Wextra -Werror \
+            -mogc -mcpu=750 -meabi -mhard-float \
+            -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            -c experiments/cartridge-probe/joyboot_si_adapter.c \
+            -o /tmp/joyboot-si-adapter.o
