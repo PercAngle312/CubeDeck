@@ -51,3 +51,14 @@ The newer experimental v2 protocol binds packets and ACKs to explicit transfer I
 5. Investigate save access separately, starting read-only and protecting existing saves.
 
 CubeDeck does not modify IPL, system settings, cartridge ROM, or save data. See [docs/gba-link-transport.md](docs/gba-link-transport.md) for transport details and validation rules, and [docs/rom-acquisition-plan.md](docs/rom-acquisition-plan.md) for the separate, read-only retail-cartridge multiboot roadmap.
+
+## Separate startup/recovery experiment
+
+The existing ACK/NACK pair was reported **3/3, cyan, Retries: 1** after both
+consoles were rebooted without changing files. Its sources remain unchanged.
+A new opt-in pair, `cubedeck-v2-startup.dol` + `cubedeck-v2-startup.gba`,
+adds settling, application-readiness synchronization, callback ownership,
+and interrupted-session draining. It is **not hardware validated** and tests
+synthetic session words rather than the ACK/NACK three-packet contract.
+See [startup/recovery experiment](experiments/v2-probe/STARTUP_RECOVERY.md)
+for separate artifact names and the later hardware test procedure.

@@ -2,8 +2,8 @@
 """Fail CI if the runtime source adds direct persistent-storage access.
 
 This is a narrowly scoped source audit, NOT proof that Swiss/firmware won't
-create files. It deliberately scans only the source files linked into the two
-console binaries, and should be revised if legitimate storage is added.
+create files. It deliberately scans the runtime/protocol/experimental C sources
+linked into console binaries, and should be revised if legitimate storage is added.
 """
 from pathlib import Path
 import re
@@ -11,7 +11,8 @@ import sys
 
 paths = (sorted(Path("src").glob("*.c")) +
          sorted(Path("gba-diagnostic").glob("*.c")) +
-         sorted(Path("protocol").glob("*.c")))
+         sorted(Path("protocol").glob("*.c")) +
+         sorted(Path("experiments").rglob("*.c")))
 patterns = {
     "GameCube memory card API": r"\bCARD_(?:Init|Mount|Create|Write|Format|Delete|Open|Read|Close)\s*\(",
     "filesystem write API": r"\b(?:fwrite|fprintf|fputs|fputc|remove|rename|mkdir|unlink)\s*\(",

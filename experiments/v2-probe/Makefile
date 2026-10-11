@@ -79,3 +79,26 @@ $(OUT)/cubedeck-v2-ack-arm.elf: experiments/v2-probe/gba-ack.c $(PROTO) experime
 $(OUT)/cubedeck-v2-ack.gba: $(OUT)/cubedeck-v2-ack-arm.elf
 	$(ARMOBJ) -O binary $< $@
 	$(GBAFIX) $@ -tCDBKACKTEST -cCDAK -m01
+
+# Isolated startup/recovery fixture; no proven ACK or production input changes.
+.PHONY: startup-gamecube startup-gba
+startup-gamecube: $(OUT)/cubedeck-v2-startup.dol
+startup-gba: $(OUT)/cubedeck-v2-startup.gba
+
+$(OUT)/cubedeck-v2-startup.elf: experiments/v2-probe/gamecube-startup.c protocol/joybus_recovery.c experiments/v2-probe/startup_fixture.h include/cubedeck/joybus_recovery.h | $(OUT)
+	$(PPC) -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+	  -I$(DEVKITPRO)/libogc/include -Iinclude \
+	  experiments/v2-probe/gamecube-startup.c protocol/joybus_recovery.c \
+	  -L$(DEVKITPRO)/libogc/lib/cube -logc -lm -o $@
+
+$(OUT)/cubedeck-v2-startup.dol: $(OUT)/cubedeck-v2-startup.elf
+	$(ELF2DOL) $< $@
+
+$(OUT)/cubedeck-v2-startup-arm.elf: experiments/v2-probe/gba-startup.c experiments/v2-probe/startup_fixture.h | $(OUT)
+	$(ARM) -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+	  -I$(DEVKITPRO)/libgba/include -Iinclude -specs=gba.specs \
+	  experiments/v2-probe/gba-startup.c -L$(DEVKITPRO)/libgba/lib -lgba -o $@
+
+$(OUT)/cubedeck-v2-startup.gba: $(OUT)/cubedeck-v2-startup-arm.elf
+	$(ARMOBJ) -O binary $< $@
+	$(GBAFIX) $@ -tCDBKSTARTUP -cCDSR -m01

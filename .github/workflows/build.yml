@@ -413,7 +413,8 @@ jobs:
                       protocol/stream_receiver.c protocol/stream_sender.c \
                       protocol/stream_wire.c protocol/session_guard.c \
                       protocol/bound_stream.c protocol/stream_hash.c \
-                      protocol/transfer_segments.c protocol/word_exchange.c; do
+                      protocol/transfer_segments.c protocol/word_exchange.c \
+                      protocol/joybus_recovery.c; do
             "$DEVKITPRO/devkitPPC/bin/powerpc-eabi-gcc" -std=c11 -Wall -Wextra -Werror -Iinclude \
               -O1 -c "$file" -o "/tmp/cd-ppc-objects/$(basename "$file" .c).o"
           done
@@ -436,7 +437,8 @@ jobs:
                       protocol/stream_receiver.c protocol/stream_sender.c \
                       protocol/stream_wire.c protocol/session_guard.c \
                       protocol/bound_stream.c protocol/stream_hash.c \
-                      protocol/transfer_segments.c protocol/word_exchange.c; do
+                      protocol/transfer_segments.c protocol/word_exchange.c \
+                      protocol/joybus_recovery.c; do
             "$DEVKITPRO/devkitARM/bin/arm-none-eabi-gcc" -std=c11 -Wall -Wextra -Werror -Iinclude \
               -O1 -mcpu=arm7tdmi -mthumb -c "$file" \
               -o "/tmp/cd-arm-objects/$(basename "$file" .c).o"
@@ -644,3 +646,54 @@ jobs:
             protocol/joybus_recovery.c tests/test_joybus_recovery.c \
             -o /tmp/test-joybus-recovery
           /tmp/test-joybus-recovery
+
+  test-startup-fixture:
+    name: Test experimental startup peer and SI adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulate session resets and real adapter ownership
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            tests/test_startup_fixture.c -o /tmp/test-startup-fixture
+          /tmp/test-startup-fixture
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Itests/startup-stubs -Iinclude protocol/joybus_recovery.c \
+            tests/test_startup_adapter.c -o /tmp/test-startup-adapter
+          /tmp/test-startup-adapter
+
+  build-v2-startup-gamecube:
+    name: Build separate opt-in startup GameCube experiment
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make -f experiments/v2-probe/Makefile startup-gamecube
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-startup-gamecube
+          path: experiments/v2-probe/out/cubedeck-v2-startup.dol
+          if-no-files-found: error
+
+  build-v2-startup-gba:
+    name: Build separate opt-in startup GBA experiment
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile isolated startup companion ROM
+        run: |
+          set -eu
+          if [ ! -f "$DEVKITPRO/libgba/include/gba.h" ]; then
+            pacman -Sy --noconfirm gba-dev
+          fi
+          make -f experiments/v2-probe/Makefile startup-gba
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-v2-startup-gba
+          path: experiments/v2-probe/out/cubedeck-v2-startup.gba
+          if-no-files-found: error
