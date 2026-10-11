@@ -67,6 +67,13 @@ int cd_jbu_step(cd_jbu *u, uint32_t now) {
         for (unsigned i=0;i<4;++i) cmd[i+1]=(u8)(client>>(24u-8u*i));
     } else if (u->phase==CD_JBU_STREAM) {
         if (cd_jb_sender_prepare(&u->sender,now,TIMEOUT,cmd,&u->generation)) return fail(u,6);
+        /* The portable encoder reverses header words. SI wire bytes must
+         * preserve the image's byte order, as the original PPC sender does.
+         * Payload encryption/CRC bytes are already in their wire order. */
+        if (u->sender.before_submit.offset<0xc0u) {
+            u8 a=cmd[1],b=cmd[2]; cmd[1]=cmd[4]; cmd[2]=cmd[3];
+            cmd[3]=b; cmd[4]=a;
+        }
         tx=5; rx=1;
     } else if (u->phase==CD_JBU_FINAL) {
         cmd[0]=0x14;

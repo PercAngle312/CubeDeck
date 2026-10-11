@@ -35,7 +35,10 @@ retain their meaning. Only the CDRAM9 template is accepted; image limit 16 KiB.
 The new controller uses unchanged v8 RESET/STATUS/key readiness, then sends a
 client key, header, encrypted payload and CRC through Joybus. The SI adapter's
 little-endian key word is converted to the original PPC sender's big-endian
-raw-key convention before encryption. The final BIOS read is displayed as
+raw-key convention before encryption. Header command bytes preserve their
+original image order: the isolated v9 adapter corrects the existing portable
+encoder's reversed header words without changing v7/v8 or that shared module.
+The final BIOS read is displayed as
 untrusted and never counts as execution. After a startup delay, bounded reads
 must obtain the status program's distinct `0x39524443` reply (CDR9).
 

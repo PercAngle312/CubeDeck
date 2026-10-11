@@ -38,9 +38,11 @@ static uint32_t client(cd_jbu *u,uint32_t now) {
     assert(command==0x15); return now;
 }
 int main(void) {
+    image[0]=0x2e; image[3]=0xea; /* Asymmetric ARM entry branch bytes. */
     image[0xb2]=0x96; image[0xbd]=(uint8_t)(-0x96-0x19);
     cd_jbu u; uint32_t now=client(&u,0);
     assert(complete(&u,++now,0)==0 && u.phase==CD_JBU_STREAM);
+    assert(!memcmp(last+1,image,4)); /* Header wire bytes, not host word order. */
     /* Refusal rolls back the next word without changing encrypted bytes. */
     refuse=1; assert(complete(&u,++now,0)==0 && !u.si.active);
     u8 rejected[5]; memcpy(rejected,last,5);
