@@ -6,12 +6,20 @@
 int main(void)
 {
     uint8_t image[0x200] = {0};
-    uint8_t transfer[5];
+    uint8_t transfer[5], initial[5], replay[5];
     cd_jb_sender sender;
     uint32_t id, words = 0u;
     assert(cd_jb_sender_init(&sender, image, sizeof(image), 0x12345678u) == 0);
     assert(cd_jb_sender_prepare(&sender, 1u, 20u, transfer, &id) == 0);
     assert(transfer[0] == 0x15u && id == 1u);
+    memcpy(initial, transfer, sizeof(initial));
+    assert(cd_jb_sender_reject_unsent(&sender, id + 1u) == -1);
+    assert(cd_jb_sender_reject_unsent(&sender, id) == 0);
+    assert(sender.words.offset == 0u);
+    assert(cd_jb_sender_complete(&sender, id, 0u, 2u) == -1);
+    assert(cd_jb_sender_prepare(&sender, 2u, 20u, replay, &id) == 0);
+    assert(memcmp(initial, replay, sizeof(initial)) == 0);
+    assert(sender.words.offset == 4u);
     assert(cd_jb_sender_prepare(&sender, 2u, 20u, transfer, &id) == -1);
     assert(cd_jb_sender_complete(&sender, id + 1u, 0u, 3u) == -1);
     assert(cd_jb_sender_complete(&sender, id, 0u, 3u) == 0);
