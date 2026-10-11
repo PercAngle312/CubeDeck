@@ -1046,3 +1046,16 @@ jobs:
             protocol/joyboot_si_queue.c tests/test_joyboot_si_queue.c \
             -o /tmp/test-joyboot-si-queue
           /tmp/test-joyboot-si-queue
+
+  test-joyboot-sender:
+    name: Test integrated Joyboot SI sender
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise bounded full-image send and callback failures
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/gba_joyboot_words.c protocol/joyboot_si_queue.c \
+            protocol/joyboot_sender.c tests/test_joyboot_sender.c \
+            -o /tmp/test-joyboot-sender
+          /tmp/test-joyboot-sender
