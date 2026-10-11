@@ -1431,6 +1431,7 @@ jobs:
             -Itools/emulator tests/test_sd2sp2_spi.cpp -o /tmp/test-sd2sp2-spi
           /tmp/test-sd2sp2-spi
           python3 tests/test_sd2sp2_image.py
+          python3 tests/test_sd2sp2_ram_image.py
 
   test-joyboot-upload-v9:
     name: Test RAM-only v9 upload and callback ownership

@@ -8,7 +8,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
-def make_image(target, probe):
+def make_image(target, probe, *, ram_status=False):
     if not 512 <= len(probe) <= 0x3ff40 or len(probe) % 16:
         raise ValueError('Invalid homebrew fixture size')
     if probe[0xb2] != 0x96 or probe[0xbd] != (-(sum(probe[0xa0:0xbd])+0x19)) & 0xff:
@@ -84,9 +84,10 @@ def make_image(target, probe):
         directory = bytearray(512)
         directory[:32] = entry(b'.          ', 0x10, 3)
         directory[32:64] = entry(b'..         ', 0x10, 0)
-        alias = b'JOYBOO~1GBA'; checksum = 0
+        alias = b'RAMSTA~1GBA' if ram_status else b'JOYBOO~1GBA'; checksum = 0
         for b in alias: checksum = (((checksum&1)<<7)+(checksum>>1)+b)&255
-        chars = list(struct.unpack('<17H', 'joyboot-probe.gba'.encode('utf-16le')))+[0]
+        filename = 'ram-status-v9.gba' if ram_status else 'joyboot-probe.gba'
+        chars = list(struct.unpack('<17H', filename.encode('utf-16le')))+[0]
         chars += [0xffff]*(26-len(chars))
         for pos, seq in enumerate((2,1)):
             e = bytearray(32); e[0] = seq | (0x40 if seq==2 else 0)

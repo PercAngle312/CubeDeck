@@ -36,6 +36,44 @@ sparse image contains protective MBR, CRC-checked primary/backup GPT, a FAT32
 volume at LBA 2048 and the logo-free v7 homebrew fixture under the real long path
 `cubedeck/joyboot-probe.gba`. It also checks that the input has no logo bytes.
 
+## Reproduce the v9 RAM upload
+
+The v9 ZIP contains the new DOL and a logo-free status template. Extract its
+DOL separately; the image builder reads only named ZIP members and checks both
+DOL/template SHA-256 entries against the package manifest. It takes a local
+BIOS supplied by the user; no assets are fetched or bundled.
+
+```sh
+python3 tools/emulator/make_sd2sp2_ram_image.py \
+  --v9-zip /path/to/cubedeck-ram-upload-v9-eab432c6d976.zip \
+  --bios /path/to/your-own-gba-bios.bin \
+  --output /path/to/new-private-v9.img
+python3 tools/emulator/run_sd2sp2_test.py \
+  --dolphin /path/to/dolphin-build/Binaries/dolphin-emu \
+  --dol /path/to/cubedeck-ram-upload-v9.dol \
+  --image /path/to/new-private-v9.img \
+  --bios /path/to/your-own-gba-bios.bin \
+  --out /path/to/new-v9-results
+```
+
+The image contains `cubedeck/ram-status-v9.gba` and `cubedeck/gba-bios.bin` on
+disjoint FAT chains. **Keep this BIOS-containing image private: do not upload,
+commit or distribute it.** The original BIOS and ZIP remain unchanged. Input
+validation and BIOS revision checking happen before output creation. A target
+that already exists is never replaced.
+
+For an intentional revision-gate failure, `--corrupt-bios` flips one byte in
+the image copy. `--allow-invalid-bios` is explicitly for failing fixtures and
+synthetic host tests; it does not bypass the console's revision check or provide
+a bootable replacement BIOS. Neither flag changes the source BIOS file.
+
+CI independently decodes the two VFAT names/checksums, follows all FAT chains,
+checks for shared clusters and compares both FAT copies, using synthetic bytes
+for the BIOS file. It checks template sizes, invalid inputs, archive checksums,
+duplicate members and refusal to overwrite. It does not run Dolphin with those
+fake BIOS bytes. See [v9 evidence](../../experiments/cartridge-probe/RAM_UPLOAD_V9.md)
+for the actual separately observed emulator execution.
+
 ## Model and tests
 
 The model handles the libogc SDHC SPI initialization path, R1/R2/R3/R7 replies,

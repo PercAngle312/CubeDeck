@@ -101,3 +101,11 @@ reads 0 and RAM reply 0 after the runner pressed A. The GBA stayed at its BIOS
 boot screen. The runner again verified unchanged DOL/image hashes during the
 run. This validates that the revision/file gate blocks upload for this corrupt
 file; it is not a simulated SI disconnect or a real-card corruption test.
+
+The emulator execution was also reproduced using the checked-in
+`tools/emulator/make_sd2sp2_ram_image.py` builder and the same released v9
+ZIP/user BIOS. This image contains only the v9 template and BIOS file in its
+CubeDeck directory, without relying on a copied v7 fixture. The GBA again
+turned cyan and the GameCube displayed CDR9 PASS with runtime reads 1 and
+reply `39524443`. DOL/image hashes remained unchanged during that run.
+This adds reproducibility evidence, not a physical hardware result.
