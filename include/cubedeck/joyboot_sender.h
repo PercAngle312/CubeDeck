@@ -6,6 +6,7 @@
 #include "cubedeck/joyboot_si_queue.h"
 typedef struct {
     cd_jb_words words;
+    cd_jb_words before_submit;
     cd_js_queue queue;
     const uint8_t *image;
     size_t capacity;
@@ -25,6 +26,9 @@ int cd_jb_sender_prepare(cd_jb_sender *s, uint32_t now, uint32_t timeout,
 int cd_jb_sender_complete(cd_jb_sender *s, uint32_t generation,
                           uint32_t si_result, uint32_t now);
 int cd_jb_sender_poll(cd_jb_sender *s, uint32_t now);
+/* Call ONLY when native SI_Transfer rejected submission synchronously.
+ * Do not call after SI accepted a transfer or while callback may arrive. */
+int cd_jb_sender_reject_unsent(cd_jb_sender *s, uint32_t generation);
 /* Final BIOS response is not presumed successful. Only an external,
  * protocol-specific validator may advance phase 3 to phase 4. */
 /* SI 0x14 read after CRC. Caller must deliver and validate its response. */
