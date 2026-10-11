@@ -1,29 +1,26 @@
-/* Portable v10 frame-contract tests. Build:
- * cc -std=c11 -Wall -Wextra -Werror -pedantic -o /tmp/cd-v10-test \
- *    experiments/cartridge-probe/test_ram_v10_protocol.c
- * /tmp/cd-v10-test
- * Does not exercise SI hardware or a GBA. */
+/* Portable 32-bit Joybus ping/ack contract test. No hardware involved. */
 #include "ram_v10_protocol.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-
 int main(void) {
-    uint8_t frame[CD_V10_FRAME_BYTES];
-    static const uint8_t expected[8]={'C','D','P','A',0x78,0x56,0x34,0x12};
-    cd_v10_encode(frame,CD_V10_ACK,0x12345678u);
-    assert(sizeof(frame)==8u);
-    assert(memcmp(frame,expected,sizeof(frame))==0);
-    assert(cd_v10_load_le32(frame)==CD_V10_ACK);
-    assert(cd_v10_load_le32(frame+4)==0x12345678u);
-    assert(cd_v10_is_ack(frame,0x12345678u));
-    assert(!cd_v10_is_ack(frame,0x12345679u));
-    frame[0]^=1u;
-    assert(!cd_v10_is_ack(frame,0x12345678u));
-    cd_v10_encode(frame,CD_V10_PING,0xffffffffu);
-    assert(cd_v10_load_le32(frame)==CD_V10_PING);
-    assert(cd_v10_load_le32(frame+4)==0xffffffffu);
-    assert(!cd_v10_is_ack(frame,0xffffffffu));
-    puts("v10 portable frame tests PASS");
+    uint8_t wire[4];
+    uint32_t ping = cd_v10_ping(0x1234u);
+    uint32_t ack = cd_v10_ack(0x1234u);
+    const uint8_t expected_ping[4] = {0x34,0x12,0xA1,0xCD};
+    cd_v10_store_le32(wire,ping);
+    assert(sizeof(wire)==4u);
+    assert(memcmp(wire,expected_ping,4)==0);
+    assert(cd_v10_load_le32(wire)==ping);
+    assert(cd_v10_is_ping(ping));
+    assert(!cd_v10_is_ping(ack));
+    assert(cd_v10_sequence(ping)==0x1234u);
+    assert(cd_v10_is_ack(ack,0x1234u));
+    assert(!cd_v10_is_ack(ack,0x1235u));
+    assert(!cd_v10_is_ack(cd_v10_error(0x1234u),0x1234u));
+    assert(!cd_v10_is_ack(CD_V10_READY_WORD,0u));
+    assert(cd_v10_is_ack(cd_v10_ack(0xffffu),0xffffu));
+    assert(!cd_v10_is_ack(cd_v10_ack(0u),0xffffu));
+    puts("v10 32-bit Joybus ping/ack contract PASS");
     return 0;
 }
