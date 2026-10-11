@@ -1155,6 +1155,7 @@ jobs:
             experiments/cartridge-probe/gba-joyboot-probe.c \
             experiments/cartridge-probe/gba_rom_reader.c \
             protocol/gba_cart_header.c protocol/gba_cart_probe.c \
+            protocol/cart_probe_reply.c \
             -L$DEVKITPRO/libgba/lib -lgba \
             -o experiments/cartridge-probe/out/joyboot-probe.elf
           arm-none-eabi-objcopy -O binary \
@@ -1169,3 +1170,15 @@ jobs:
           name: cubedeck-joyboot-gba-probe
           path: experiments/cartridge-probe/out/joyboot-probe.gba
           if-no-files-found: error
+
+  test-cartridge-probe-reply:
+    name: Test cartridge probe Joybus status reply
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check status protocol encoding and strict decoding
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -Iinclude \
+            protocol/cart_probe_reply.c tests/test_cart_probe_reply.c \
+            -o /tmp/test-cart-probe-reply
+          /tmp/test-cart-probe-reply
