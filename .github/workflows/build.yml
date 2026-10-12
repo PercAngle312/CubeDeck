@@ -1615,6 +1615,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
       - run: |
