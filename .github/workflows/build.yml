@@ -1560,6 +1560,11 @@ jobs:
             experiments/cartridge-probe/test_ram_v11_header_protocol.c \
             protocol/gba_cart_header.c -o /tmp/test-ram-v11-header
           /tmp/test-ram-v11-header
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined \
+            -Iinclude -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/test_ram_v11_header_client.c \
+            protocol/gba_cart_header.c -o /tmp/test-ram-v11-client
+          /tmp/test-ram-v11-client
 
   test-ram-v10-protocol:
     name: Test v10 RAM ping/ack frames
