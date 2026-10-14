@@ -74,3 +74,25 @@ reads, repeated/stale responses, byte order, and out-of-range offsets, plus
 ARM and PowerPC cross-compilation. A GBA-side ROM read callback already exists
 but is not yet wired to the v10 RAM runtime. Never report this as a completed
 cartridge read until a real GBA cartridge is successfully identified.
+
+## v11 host-only implementation checkpoint
+
+The new `ram_v11_header_protocol.h` defines a four-byte Joybus word per
+request/reply: `D1 seq offset A5` requests one ROM header byte,
+`D2 seq offset data` replies, and `D3 seq offset error` signals failure.
+Only offsets 0 through 191 are accepted. A single 8-bit transaction ID is
+combined with the offset; one header scan uses 192 distinct ID/offset pairs.
+This does **not** guarantee freshness across restarts or a second scan, so
+future runtime integration must reset the GBA protocol state and establish a
+new session before each scan. No retries are allowed after SI ownership errors.
+
+The separate `ram_v11_header_client.h` buffers all 192 bytes, ignores
+wrong-ID/wrong-offset replies, fails closed on explicit errors, and exposes
+parsed metadata only after the complete header passes its checksum. Portable
+CI fixtures exercise every possible interruption point and corrupt checksums.
+
+**Not yet implemented:** GBA RAM runtime command handler, GameCube SI runtime
+integration, v11 DOL/GBA binaries, physical-cartridge tests, ROM dumping,
+emulation, or save support. The v10 no-cartridge hardware test remains the
+required gate before v11 hardware testing. The checksum is only a format
+sanity check; it cannot prove that a cartridge is authentic or safe.
