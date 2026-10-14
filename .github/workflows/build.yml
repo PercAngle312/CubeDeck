@@ -1548,6 +1548,19 @@ jobs:
             -o /tmp/test-si-adapter
           /tmp/test-si-adapter
 
+  test-ram-v11-header-protocol:
+    name: Test isolated v11 cartridge header request/reply contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify 192-byte bounded ROM read contract and stale reply rejection
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined \
+            -Iinclude -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/test_ram_v11_header_protocol.c \
+            protocol/gba_cart_header.c -o /tmp/test-ram-v11-header
+          /tmp/test-ram-v11-header
+
   test-ram-v10-protocol:
     name: Test v10 RAM ping/ack frames
     runs-on: ubuntu-latest
