@@ -54,3 +54,23 @@ lengths with a host-side fixture before interpreting a hardware reply.
 Next engineering task: build the independent v10 RAM payload and
 GameCube entrypoint, with portable encoder/decoder tests; do not patch
 the hardware-verified v9 source in place.
+
+## v11 cartridge-header gate (planned, not hardware validated)
+
+Before integrating `gba_rom_reader.c` into a RAM-resident GBA payload, require
+three cold-start v10 PING/ACK hardware passes with the cartridge **absent**.
+Record the GameCube PING stage, SI error, and purple GBA screen for each.
+A CI-green v10 run alone is not proof of Joybus reliability.
+
+Build v11 as separately named DOL/GBA artifacts, preserving v9 and v10.
+The first cartridge experiment must read only the 192-byte ROM header through
+aligned halfword loads, validate the header checksum, and return bounded
+metadata over a sequence-checked request/reply protocol. Do not expose bulk
+ROM reads, infer cartridge capacity, or touch save address space. Require a
+physical cartridge and explicit user action; refuse empty/invalid headers.
+
+Before any hardware run, add host tests for invalid checksum, interrupted
+reads, repeated/stale responses, byte order, and out-of-range offsets, plus
+ARM and PowerPC cross-compilation. A GBA-side ROM read callback already exists
+but is not yet wired to the v10 RAM runtime. Never report this as a completed
+cartridge read until a real GBA cartridge is successfully identified.
