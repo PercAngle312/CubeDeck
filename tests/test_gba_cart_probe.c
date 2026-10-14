@@ -34,6 +34,26 @@ int main(void)
     src.fail_at = -1; src.reads = 0u; src.bytes[0xBDu] ^= 1u;
     assert(cd_gba_probe_header(read_byte, &src, &result) == -1);
     assert(src.reads == 192u && memcmp(&result, &before, sizeof(result)) == 0);
+    /* Every interrupted read must leave the caller's last good result intact. */
+    src.bytes[0xBDu] ^= 1u;
+    for (i = 0u; i < CD_GBA_HEADER_SIZE; ++i) {
+        src.reads = 0u;
+        src.fail_at = (int)i;
+        assert(cd_gba_probe_header(read_byte, &src, &result) == -1);
+        assert(src.reads == i);
+        assert(memcmp(&result, &before, sizeof(result)) == 0);
+    }
+    src.fail_at = -1;
+    src.reads = 0u;
+    assert(cd_gba_probe_header(read_byte, &src, &result) == 0);
+    assert(src.reads == CD_GBA_HEADER_SIZE);
+    assert(memcmp(&result, &before, sizeof(result)) == 0);
+    /* A corrupt field is rejected even when the rest of the header is intact. */
+    src.bytes[0xACu] ^= 1u;
+    src.reads = 0u;
+    assert(cd_gba_probe_header(read_byte, &src, &result) == -1);
+    assert(src.reads == CD_GBA_HEADER_SIZE);
+    assert(memcmp(&result, &before, sizeof(result)) == 0);
     assert(cd_gba_probe_header(NULL, &src, &result) == -1);
     assert(cd_gba_probe_header(read_byte, &src, NULL) == -1);
     puts("Read-only 192-byte cartridge probe: bounds, checksum and failure atomicity passed.");
