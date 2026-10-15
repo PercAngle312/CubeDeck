@@ -10,6 +10,7 @@ static void make_header(uint8_t header[CD_V11_HEADER_LENGTH]) {
     memcpy(header+0xA0,"CUBEDECK    ",12);
     memcpy(header+0xAC,"CD01",4);
     memcpy(header+0xB0,"HB",2);
+    header[0xB2]=0x96;
     for(i=0xA0;i<=0xBC;++i) sum=(uint8_t)(sum-header[i]);
     header[0xBD]=(uint8_t)(sum-0x19u);
 }

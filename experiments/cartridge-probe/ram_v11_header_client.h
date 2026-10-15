@@ -49,7 +49,8 @@ static inline int cd_v11_header_accept(cd_v11_header_client *client,
     }
     client->bytes[client->offset++]=value;
     if (client->offset!=CD_V11_HEADER_LENGTH) return 1;
-    if (cd_gba_parse_header(client->bytes,sizeof(client->bytes),
+    if (client->bytes[0xB2u]!=0x96u ||
+        cd_gba_parse_header(client->bytes,sizeof(client->bytes),
                             &client->parsed)!=0 ||
         !client->parsed.checksum_valid) {
         memset(&client->parsed,0,sizeof(client->parsed));

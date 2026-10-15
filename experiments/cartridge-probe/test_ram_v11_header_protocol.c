@@ -27,6 +27,7 @@ int main(void) {
     memcpy(f.bytes+0xA0,"CUBEDECK    ",12);
     memcpy(f.bytes+0xAC,"CD01",4);
     memcpy(f.bytes+0xB0,"HB",2);
+    f.bytes[0xB2]=0x96;
     for(i=0xA0;i<=0xBC;++i) sum=(uint8_t)(sum-f.bytes[i]);
     f.bytes[0xBD]=(uint8_t)(sum-0x19u);
     assert(cd_v11_request(0x12,0x34)==0xD11234A5u);

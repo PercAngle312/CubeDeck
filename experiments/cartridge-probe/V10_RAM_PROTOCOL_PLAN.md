@@ -96,3 +96,18 @@ integration, v11 DOL/GBA binaries, physical-cartridge tests, ROM dumping,
 emulation, or save support. The v10 no-cartridge hardware test remains the
 required gate before v11 hardware testing. The checksum is only a format
 sanity check; it cannot prove that a cartridge is authentic or safe.
+
+
+## v11 runtime continuation
+
+The separately named v11 pair is now wired to GameCube SI and a RAM-resident
+GBA command handler. See [v11 package/test instructions](RAM_HEADER_V11.md).
+It reads only 192 header bytes after an explicit BEGIN and GC A press.
+No hardware pass is claimed. The earlier host-only checkpoint above describes
+its state before this continuation.
+
+GBATEK documents application Joybus WRITE data as low-byte-first. The earlier,
+unvalidated v10 runtime driver used high-byte-first. v11 adds a separate
+`cubedeck-ram-preflight-v11.dol` with corrected runtime encoding; use its
+three no-cartridge PING/ACK cold-start passes as the gate before the v11 header
+DOL. Existing v9/v10 entrypoints and historical artifacts stay unchanged.
