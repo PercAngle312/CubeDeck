@@ -1,0 +1,1 @@
+#define CARDIO_ERROR_READY 0

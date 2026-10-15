@@ -1,0 +1,158 @@
+name: CubeDeck v11 Runtime
+on:
+  push:
+    branches: [experiment/cartridge-header-readonly]
+  pull_request:
+    paths:
+      - 'experiments/cartridge-probe/**'
+      - 'protocol/**'
+      - 'include/**'
+      - 'tools/packaging/**'
+      - '.github/workflows/ram-v11.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-runtime:
+    name: Test v11 session and SI runtime fault matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -eu
+          flags='-std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined'
+          cc $flags -Iinclude -Itests/fixtures/si -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/ram_v11_link.c \
+            experiments/cartridge-probe/test_ram_v11_runtime.c \
+            protocol/gba_cart_header.c -o /tmp/v11-runtime
+          /tmp/v11-runtime
+          for test in protocol client; do
+            cc $flags -Iinclude -Iexperiments/cartridge-probe \
+              experiments/cartridge-probe/test_ram_v11_header_${test}.c \
+              protocol/gba_cart_header.c -o /tmp/v11-${test}
+            /tmp/v11-${test}
+          done
+          cc $flags -Itests/fixtures/si -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/ram_v10_link.c \
+            experiments/cartridge-probe/test_ram_v10_link.c -o /tmp/v10-link
+          /tmp/v10-link
+          cc $flags experiments/cartridge-probe/test_ram_v10_protocol.c -o /tmp/v10-protocol
+          /tmp/v10-protocol
+          cc $flags -Itests/fixtures/si -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/ram_v11_preflight_link.c \
+            experiments/cartridge-probe/test_ram_v11_preflight_link.c -o /tmp/v11-preflight
+          /tmp/v11-preflight
+          python3 tools/packaging/test_package_ram_v11.py
+  build-gba:
+    name: Build separate v11 GBA RAM header template
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    env:
+      PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git clone --depth 1 https://github.com/devkitPro/libgba.git /tmp/libgba
+          make -C /tmp/libgba
+          make -C /tmp/libgba install
+          mkdir -p ram-v11
+          arm-none-eabi-gcc -O2 -Wall -Wextra -Werror -mthumb -mthumb-interwork \
+            -Iinclude -I$DEVKITPRO/libgba/include -Iexperiments/cartridge-probe \
+            -specs=gba_mb.specs experiments/cartridge-probe/gba-ram-header-v11.c \
+            experiments/cartridge-probe/gba_rom_reader.c \
+            -L$DEVKITPRO/libgba/lib -lgba -o ram-v11/header.elf
+          arm-none-eabi-objcopy -O binary ram-v11/header.elf ram-v11/ram-header-v11.gba
+          gbafix ram-v11/ram-header-v11.gba -tCDHEAD11 -cCD11 -m01
+          size=$(stat -c %s ram-v11/ram-header-v11.gba)
+          truncate -s "$(( (size + 15) / 16 * 16 ))" ram-v11/ram-header-v11.gba
+          test "$(stat -c %s ram-v11/ram-header-v11.gba)" -le 16384
+          dd if=/dev/zero of=ram-v11/ram-header-v11.gba bs=1 seek=4 count=156 conv=notrunc status=none
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ram-v11/ram-header-v11.gba').read_bytes()
+          assert len(p)%16==0 and 512<=len(p)<=16384
+          assert p[4:0xa0]==bytes(156)
+          assert p[0xa0:0xa8]==b'CDHEAD11'
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-header-v11-logo-free-template
+          path: ram-v11/ram-header-v11.gba
+          if-no-files-found: error
+
+  build-gamecube:
+    name: Build isolated v11 GameCube header DOL
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    env:
+      PATH: /opt/devkitpro/devkitPPC/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p ram-v11
+          powerpc-eabi-gcc -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+            -DCD_V11_BUILD_ID=\"${GITHUB_SHA:0:12}\" \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/gamecube-ram-header-v11.c \
+            experiments/cartridge-probe/joyboot_upload_v10.c \
+            experiments/cartridge-probe/ram_v11_link.c \
+            experiments/cartridge-probe/joyboot_ready.c \
+            experiments/cartridge-probe/joyboot_si_adapter.c \
+            experiments/cartridge-probe/sd_mount.c \
+            experiments/cartridge-probe/sd_fat_volume.c \
+            experiments/cartridge-probe/sd_gpt.c \
+            protocol/image_integrity.c protocol/gba_cart_header.c \
+            protocol/gba_multiboot_plan.c protocol/joyboot_sender.c \
+            protocol/joyboot_si_queue.c protocol/gba_joyboot_words.c \
+            -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm \
+            -o ram-v11/upload.elf
+          elf2dol ram-v11/upload.elf ram-v11/cubedeck-ram-header-v11.dol
+          powerpc-eabi-gcc -O2 -Wall -Wextra -Werror -mogc -mcpu=750 -meabi -mhard-float \
+            -DCD_V11_BUILD_ID=\"${GITHUB_SHA:0:12}\" \
+            -Iinclude -I$DEVKITPRO/libogc/include -Iexperiments/cartridge-probe \
+            experiments/cartridge-probe/gamecube-ram-preflight-v11.c \
+            experiments/cartridge-probe/joyboot_upload_v10.c \
+            experiments/cartridge-probe/ram_v11_preflight_link.c \
+            experiments/cartridge-probe/joyboot_ready.c \
+            experiments/cartridge-probe/joyboot_si_adapter.c \
+            experiments/cartridge-probe/sd_mount.c \
+            experiments/cartridge-probe/sd_fat_volume.c \
+            experiments/cartridge-probe/sd_gpt.c \
+            protocol/image_integrity.c protocol/gba_cart_header.c \
+            protocol/gba_multiboot_plan.c protocol/joyboot_sender.c \
+            protocol/joyboot_si_queue.c protocol/gba_joyboot_words.c \
+            -L$DEVKITPRO/libogc/lib/cube -lfat -logc -lm \
+            -o ram-v11/preflight.elf
+          elf2dol ram-v11/preflight.elf ram-v11/cubedeck-ram-preflight-v11.dol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-header-v11-gamecube
+          path: ram-v11/*.dol
+          if-no-files-found: error
+
+  package:
+    name: Verify and package v11 SD-ready experiment
+    needs: [test-runtime, build-gba, build-gamecube]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-ram-header-v11-gamecube
+          path: ram-v11-package
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubedeck-ram-header-v11-logo-free-template
+          path: ram-v11-package/cubedeck
+      - run: |
+          python3 tools/packaging/package_ram_v11.py \
+            --input ram-v11-package \
+            --output cubedeck-ram-header-v11-${GITHUB_SHA:0:12}.zip \
+            --commit "$GITHUB_SHA" --run "$GITHUB_RUN_ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubedeck-ram-header-v11-sd-ready
+          path: cubedeck-ram-header-v11-*.zip
+          if-no-files-found: error

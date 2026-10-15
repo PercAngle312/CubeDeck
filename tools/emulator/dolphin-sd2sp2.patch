@@ -1,0 +1,144 @@
+diff --git a/Source/Core/Core/CMakeLists.txt b/Source/Core/Core/CMakeLists.txt
+index 54a2e18..8610455 100644
+--- a/Source/Core/Core/CMakeLists.txt
++++ b/Source/Core/Core/CMakeLists.txt
+@@ -201,6 +201,9 @@ add_library(core
+   HW/EXI/EXI_Device.h
+   HW/EXI/EXI_DeviceAD16.cpp
+   HW/EXI/EXI_DeviceAD16.h
++  HW/EXI/EXI_DeviceSD2SP2.cpp
++  HW/EXI/EXI_DeviceSD2SP2.h
++  HW/EXI/SD2SP2SPI.h
+   HW/EXI/EXI_DeviceAGP.cpp
+   HW/EXI/EXI_DeviceAGP.h
+   HW/EXI/EXI_DeviceDummy.cpp
+diff --git a/Source/Core/Core/HW/EXI/EXI.cpp b/Source/Core/Core/HW/EXI/EXI.cpp
+index fd371fa..3f375ca 100644
+--- a/Source/Core/Core/HW/EXI/EXI.cpp
++++ b/Source/Core/Core/HW/EXI/EXI.cpp
+@@ -4,6 +4,7 @@
+ #include "Core/HW/EXI/EXI.h"
+ 
+ #include <array>
++#include <cstdlib>
+ #include <memory>
+ 
+ #include "Common/ChunkFile.h"
+@@ -15,6 +16,7 @@
+ #include "Core/CoreTiming.h"
+ #include "Core/HW/EXI/EXI_Channel.h"
+ #include "Core/HW/EXI/EXI_DeviceMemoryCard.h"
++#include "Core/HW/EXI/EXI_DeviceSD2SP2.h"
+ #include "Core/HW/GCMemcard/GCMemcard.h"
+ #include "Core/HW/MMIO.h"
+ #include "Core/HW/ProcessorInterface.h"
+@@ -143,7 +145,11 @@ void ExpansionInterfaceManager::Init(const Sram* override_sram)
+   m_channels[0]->AddDevice(EXIDeviceType::MaskROM, 1);
+   m_channels[SlotToEXIChannel(Slot::SP1)]->AddDevice(Config::Get(Config::MAIN_SERIAL_PORT_1),
+                                                      SlotToEXIDevice(Slot::SP1));
+-  m_channels[2]->AddDevice(EXIDeviceType::AD16, 0);
++  // Test-only opt-in: default Dolphin behavior remains AD16.
++  if (const char* image = std::getenv("CUBEDECK_SD2SP2_IMAGE"); image && *image)
++    m_channels[2]->AddDevice(std::make_unique<CEXISD2SP2>(m_system, image), 0);
++  else
++    m_channels[2]->AddDevice(EXIDeviceType::AD16, 0);
+ 
+   m_event_type_change_device = core_timing.RegisterEvent("ChangeEXIDevice", ChangeDeviceCallback);
+   m_event_type_update_interrupts =
+diff --git a/Source/Core/Core/HW/EXI/EXI_Channel.cpp b/Source/Core/Core/HW/EXI/EXI_Channel.cpp
+index 8d47a81..94ebe16 100644
+--- a/Source/Core/Core/HW/EXI/EXI_Channel.cpp
++++ b/Source/Core/Core/HW/EXI/EXI_Channel.cpp
+@@ -4,6 +4,7 @@
+ #include "Core/HW/EXI/EXI_Channel.h"
+ 
+ #include <memory>
++#include <cstdlib>
+ 
+ #include "Common/Assert.h"
+ #include "Common/ChunkFile.h"
+@@ -14,6 +15,7 @@
+ #include "Core/HW/EXI/EXI.h"
+ #include "Core/HW/EXI/EXI_Device.h"
+ #include "Core/HW/MMIO.h"
++#include "Core/HW/Memmap.h"
+ #include "Core/Movie.h"
+ #include "Core/System.h"
+ 
+@@ -107,7 +109,22 @@ void CEXIChannel::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
+                    {
+                      IEXIDevice* device = GetDevice(m_status.CHIP_SELECT);
+                      if (device == nullptr)
++                     {
++                       // libogc clocks the SD bus with CS high during reset.
++                       // Gate this test-environment fix on the opt-in model.
++                       const char* image = std::getenv("CUBEDECK_SD2SP2_IMAGE");
++                       if (m_channel_id == 2 && m_status.CHIP_SELECT == 0 && image && *image)
++                       {
++                         if (m_control.DMA == 0 && m_control.RW != EXI_WRITE)
++                           m_imm_data = 0xffffffff;
++                         else if (m_control.DMA != 0 && m_control.RW == EXI_READ)
++                           for (u32 i = 0; i < m_dma_length; ++i)
++                             m_system.GetMemory().Write_U8(0xff, m_dma_memory_address + i);
++                         m_control.TSTART = 0;
++                         SendTransferComplete();
++                       }
+                        return;
++                     }
+ 
+                      if (m_control.DMA == 0)
+                      {
+diff --git a/Source/Core/Core/HW/EXI/EXI_DeviceSD2SP2.cpp b/Source/Core/Core/HW/EXI/EXI_DeviceSD2SP2.cpp
+new file mode 100644
+index 0000000..b1dad6c
+--- /dev/null
++++ b/Source/Core/Core/HW/EXI/EXI_DeviceSD2SP2.cpp
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++#include "Core/HW/EXI/EXI_DeviceSD2SP2.h"
++#include "Common/Logging/Log.h"
++namespace ExpansionInterface {
++CEXISD2SP2::CEXISD2SP2(Core::System& system, const std::string& path)
++    : IEXIDevice(system), m_card(path) {
++  INFO_LOG_FMT(EXPANSIONINTERFACE, "CubeDeck read-only SD2SP2 image present={}", m_card.present());
++}
++void CEXISD2SP2::ImmReadWrite(u32& value, u32 size) {
++  u32 reply = 0;
++  for (u32 i = 0; i < size; ++i) {
++    u8 byte = value >> (24 - i * 8);
++    TransferByte(byte);
++    reply |= u32(byte) << (24 - i * 8);
++  }
++  value = reply;
++}
++void CEXISD2SP2::TransferByte(u8& byte) {
++  const auto before = m_card.commands;
++  byte = m_card.transfer(byte);
++  if (before != m_card.commands)
++    INFO_LOG_FMT(EXPANSIONINTERFACE, "SD2SP2 CMD{} arg={} reads={} denied={}",
++                 m_card.last_command, m_card.last_argument, m_card.reads,
++                 m_card.rejected_writes);
++}
++}
+diff --git a/Source/Core/Core/HW/EXI/EXI_DeviceSD2SP2.h b/Source/Core/Core/HW/EXI/EXI_DeviceSD2SP2.h
+new file mode 100644
+index 0000000..b677c48
+--- /dev/null
++++ b/Source/Core/Core/HW/EXI/EXI_DeviceSD2SP2.h
+@@ -0,0 +1,16 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++#pragma once
++#include "Core/HW/EXI/EXI_Device.h"
++#include "Core/HW/EXI/SD2SP2SPI.h"
++namespace ExpansionInterface {
++class CEXISD2SP2 final : public IEXIDevice {
++public:
++  CEXISD2SP2(Core::System& system, const std::string& path);
++  void ImmReadWrite(u32& data, u32 size) override;
++  bool IsPresent() const override { return m_card.present(); }
++  void SetCS(int cs) override { if (!cs) m_card.deselect(); }
++private:
++  void TransferByte(u8& byte) override;
++  cubedeck::SD2SP2SPI m_card;
++};
++}
